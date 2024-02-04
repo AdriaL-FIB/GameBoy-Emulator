@@ -222,26 +222,38 @@ public:
 
 
 	void clock();
-	void fetch_instr();
-	void fetch_data();
 
-	uint8_t opcode = 0x00;
-	instruction* curr_instruction;
 
 private:
+	struct data {
+		u16 fetched_data;
+		u16 mem_dest;
+		bool dest_is_mem;
+	};
+	data curr_data;
+
+	void fetch_instr();
+	void fetch_data();
+	uint8_t opcode = 0x00;
+	instruction* curr_instruction;
 	Bus* bus = nullptr;
+
+	void* get_reg_from_enum(reg_type reg);
+	u16 read_reg_from_enum(reg_type reg) const;
+	bool is_reg_16_bit(reg_type reg) const;
+
+	//uint16_t* get_reg16_from_enum(reg_type reg);
+
 	void write(uint16_t addr, uint8_t data);
 	void write(uint16_t addr, uint16_t data);
 	uint8_t read(uint16_t addr);
 	uint16_t read_16b(uint16_t addr);
 
-	bool check_condition(cond_type cc);
+	// Converts 16-bit address fake ram to system address
+	uint8_t* get_addr(uint16_t addr);
 
-	struct INSTRUCTION {
-		std::string name;
-		std::function<void()> function;
-	};
+	bool check_condition(cond_type cc) const;
 
-	std::array<INSTRUCTION, 2> lookup = { {"NOP", } };
+
 };
 

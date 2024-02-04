@@ -15,6 +15,398 @@ uint16_t two8b_to_16b(uint8_t h, uint16_t l) {
 	return ((uint16_t)h << 8) | l;
 }
 
+
+void* CPU::get_reg_from_enum(reg_type reg)
+{
+	switch (reg)
+	{
+	case RT_NONE:
+		return nullptr;
+	case RT_A:
+		return &AF.A;
+	case RT_B:
+		return &BC.B;
+	case RT_C:
+		return &BC.C;
+	case RT_D:
+		return &DE.D;
+	case RT_E:
+		return &DE.E;
+	case RT_H:
+		return &HL.H;
+	case RT_L:
+		return &HL.L;
+	case RT_AF:
+		return &AF.reg;
+	case RT_BC:
+		return &BC.reg;
+	case RT_DE:
+		return &DE.reg;
+	case RT_HL:
+		return &HL.reg;
+	case RT_SP:
+		return &SP;
+	case RT_PC:
+		return &PC;
+	}
+}
+
+u16 CPU::read_reg_from_enum(reg_type reg) const
+{
+	switch (reg)
+	{
+	case RT_NONE:
+		return 0;
+	case RT_A:
+		return AF.A;
+	case RT_B:
+		return BC.B;
+	case RT_C:
+		return BC.C;
+	case RT_D:
+		return DE.D;
+	case RT_E:
+		return DE.E;
+	case RT_H:
+		return HL.H;
+	case RT_L:
+		return HL.L;
+	case RT_AF:
+		return AF.reg;
+	case RT_BC:
+		return BC.reg;
+	case RT_DE:
+		return DE.reg;
+	case RT_HL:
+		return HL.reg;
+	case RT_SP:
+		return SP;
+	case RT_PC:
+		return PC;
+	}
+}
+
+bool CPU::is_reg_16_bit(reg_type reg) const
+{
+	return reg >= RT_AF;
+}
+
+void CPU::fetch_data() {
+	switch (curr_instruction->mode)
+	{
+	case AM_IMP:
+		break;
+
+	case AM_R_A16:
+		u16 addr = read_16b(PC); PC += 2;
+		curr_data.fetched_data = read(addr);
+		break;
+
+	case AM_D16:
+	case AM_R_D16:
+		curr_data.fetched_data = read_16b(PC); PC += 2;
+		break;
+
+	case AM_MR_R:
+		if (is_reg_16_bit(curr_instruction->reg_2)) {
+			curr_data.mem_dest = read_reg_from_enum(curr_instruction->reg_1);
+		}
+		else {
+			curr_data.mem_dest = 0xFF00 | read(curr_instruction->reg_1);
+		}
+		curr_data.dest_is_mem = true;
+	case AM_R_R:
+		curr_data.fetched_data = read_reg_from_enum(curr_instruction->reg_2);
+		break;
+
+	case AM_R:
+		curr_data.fetched_data = read_reg_from_enum(curr_instruction->reg_1);
+		break;
+
+	case AM_R_D8:
+		curr_data.fetched_data = read(PC++);
+		break;
+
+	case AM_R_MR:
+		if (is_reg_16_bit(curr_instruction->reg_2)) {
+			curr_data.fetched_data = read_16b(curr_instruction->reg_2);
+		}
+		else {
+			curr_data.fetched_data = 0xFF00 | read(curr_instruction->reg_2);
+		}
+		break;
+
+	case AM_R_HLI:
+		u16 addr = read_reg_from_enum(curr_instruction->reg_2);
+		curr_data.fetched_data = read_16b(addr);
+		HL.reg++;
+		break;
+
+	case AM_R_HLD:
+		u16 addr = read_reg_from_enum(curr_instruction->reg_2);
+		curr_data.fetched_data = read_16b(addr);
+		HL.reg--;
+		break;
+
+	case AM_HLI_R:
+		curr_data.dest_is_mem = true;
+		curr_data.mem_dest = read_reg_from_enum(curr_instruction->reg_1);
+		curr_data.fetched_data = read_reg_from_enum(curr_instruction->reg_2);
+		HL.reg++;
+		break;
+
+	case AM_HLD_R:
+		curr_data.dest_is_mem = true;
+		curr_data.mem_dest = read_reg_from_enum(curr_instruction->reg_1);
+		curr_data.fetched_data = read_reg_from_enum(curr_instruction->reg_2);
+		HL.reg--;
+		break;
+
+	case AM_R_A8:
+		curr_data.fetched_data = 0xFF00 | read(PC++);
+		break;
+
+	case AM_A8_R:
+		curr_data.dest_is_mem = true;
+		curr_data.mem_dest = 0xFF00 | read(PC++);
+		curr_data.fetched_data = read_reg_from_enum(curr_instruction->reg_2);
+		break;
+
+	case AM_HL_SPR:
+		curr_data.fetched_data = read_16b(SP + read(PC++));
+		break;
+
+	case AM_D8:
+		curr_data.fetched_data = read(PC++);
+		break;
+
+	case AM_D16_R:
+	case AM_A16_R:
+		curr_data.dest_is_mem = true;
+		curr_data.mem_dest = read_16b(PC); PC += 2;
+		curr_data.fetched_data = read_reg_from_enum(curr_instruction->reg_2);
+		break;
+
+	case AM_MR_D8:
+		curr_data.dest_is_mem = true;
+		curr_data.mem_dest = read_reg_from_enum(curr_instruction->reg_1);
+		curr_data.fetched_data = read(PC++);
+		break;
+
+	case AM_MR:
+		curr_data.dest_is_mem = true;
+		curr_data.mem_dest = read_reg_from_enum(curr_instruction->reg_1);
+		curr_data.fetched_data = read_reg_from_enum(curr_instruction->reg_1);
+		break;
+	}
+}
+
+void CPU::fetch_instr()
+{
+	switch (curr_instruction->type)
+	{
+	case IN_NONE:
+		return;
+	case IN_NOP:
+		return;
+	case IN_LD:
+		u16 value = curr_data.fetched_data;
+		if (curr_data.dest_is_mem) {
+			if (is_reg_16_bit(curr_instruction->reg_2)) {
+				write(curr_data.mem_dest, value);
+			}
+			else {
+				write(curr_data.mem_dest, (u8)value);
+			}
+		}
+		else {
+			void* dest = get_reg_from_enum(curr_instruction->reg_1);
+			if (is_reg_16_bit(curr_instruction->reg_1)) {
+				*((u16*)dest) = value;
+			}
+			else {
+				*((u8*)dest) = value;
+			}
+		}
+		return;
+	case IN_INC:
+		if (curr_data.dest_is_mem) {
+			u8 val = add_8b(read(curr_data.mem_dest), 1);
+			// Carry flag not affected!
+			AF.F.C = 0;
+			write(curr_data.mem_dest, val);
+			return;
+		}
+		
+		if (is_reg_16_bit(curr_instruction->reg_1)) {
+			INC((u16*)get_reg_from_enum(curr_instruction->reg_1));
+		}
+		else {
+			INC((u8*)get_reg_from_enum(curr_instruction->reg_1));
+		}
+		return;
+	case IN_DEC:
+		if (curr_data.dest_is_mem) {
+			u8 val = sub_8b(read(curr_data.mem_dest), 1);
+			// Carry flag not affected!
+			AF.F.C = 0;
+			write(curr_data.mem_dest, val);
+			return;
+		}
+
+		if (is_reg_16_bit(curr_instruction->reg_1)) {
+			DEC((u16*)get_reg_from_enum(curr_instruction->reg_1));
+		}
+		else {
+			DEC((u8*)get_reg_from_enum(curr_instruction->reg_1));
+		}
+		return;
+	case IN_RLCA:
+		RLCA();
+		return;
+	case IN_ADD:
+		if (opcode == 0xE8) {
+			ADD_SP((int8_t)curr_data.fetched_data);
+			return;
+		}
+		if (is_reg_16_bit(curr_instruction->reg_1)) {
+			ADD(read_reg_from_enum(curr_instruction->reg_2));
+		}
+		else {
+			ADD((u8)read_reg_from_enum(curr_instruction->reg_2));
+		}
+		return;
+	case IN_RRCA:
+		RRCA();
+		return;
+	case IN_STOP:
+		STOP();
+		return;
+	case IN_RLA:
+		RLA();
+		return;
+	case IN_JR:
+		//if (curr_instruction->cond == CT_NONE) {
+		//	JR(curr_data.fetched_data);
+		//	return;
+		//}
+		JR(curr_instruction->cond, curr_data.fetched_data);
+		return;
+	case IN_RRA:
+		RRA();
+		return;
+	case IN_DAA:
+		DAA();
+		return;
+	case IN_CPL:
+		CPL();
+		return;
+	case IN_SCF:
+		SCF();
+		return;
+	case IN_CCF:
+		CCF();
+		return;
+	case IN_HALT:
+		HALT();
+		return;
+	case IN_ADC:
+		ADC(curr_data.fetched_data);
+		return;
+	case IN_SUB:
+		SUB(curr_data.fetched_data);
+		return;
+	case IN_SBC:
+		SBC(curr_data.fetched_data);
+		return;
+	case IN_AND:
+		AND(curr_data.fetched_data);
+		return;
+	case IN_XOR:
+		XOR(curr_data.fetched_data);
+		return;
+	case IN_OR:
+		OR(curr_data.fetched_data);
+		return;
+	case IN_CP:
+		CP(curr_data.fetched_data);
+		return;
+	case IN_POP:
+		POP((u16*)get_reg_from_enum(curr_instruction->reg_1));
+		return;
+	case IN_JP:
+		//if (curr_instruction->cond == CT_NONE) {
+		//	JP(curr_data.fetched_data);
+		//	return;
+		//}
+		JP(curr_instruction->cond, curr_data.fetched_data);
+		return;
+	case IN_PUSH:
+		PUSH(curr_data.fetched_data);
+		return;
+	case IN_RET:
+		RET();
+		return;
+	case IN_CB:
+		// 
+		return;
+	case IN_CALL:
+		CALL(curr_instruction->cond, curr_data.fetched_data);
+		return;
+	case IN_RETI:
+		RETI();
+		return;
+	case IN_LDH:
+		if (curr_data.dest_is_mem) {
+			write(curr_data.mem_dest, curr_data.fetched_data);
+		}
+		else {
+			void* dest = get_reg_from_enum(curr_instruction->reg_1);
+			*((u8*)dest) = curr_data.fetched_data;
+		}
+		return;
+	case IN_JPHL:
+		NO_IMPL;
+		return;
+	case IN_DI:
+		DI();
+		return;
+	case IN_EI:
+		EI();
+		return;
+	case IN_RST:
+		RST(curr_instruction->param);
+		return;
+	case IN_ERR:
+		// ?
+		return;
+	case IN_RLC:
+		return;
+	case IN_RRC:
+		return;
+	case IN_RL:
+		return;
+	case IN_RR:
+		return;
+	case IN_SLA:
+		return;
+	case IN_SRA:
+		return;
+	case IN_SWAP:
+		return;
+	case IN_SRL:
+		return;
+	case IN_BIT:
+		return;
+	case IN_RES:
+		return;
+	case IN_SET:
+		return;
+	default:
+		return;
+	}
+}
+
 void CPU::clock()
 {
 	opcode = read(PC++);
@@ -22,6 +414,8 @@ void CPU::clock()
 	curr_instruction = instruction_by_opcode(opcode);
 
 	fetch_data();
+
+	fetch_instr();
 
 	//switch (opcode) {
 	//default:
@@ -49,13 +443,6 @@ void CPU::clock()
 	//}
 }
 
-void CPU::fetch_data() {
-	switch (curr_instruction->mode) {
-	default:
-		break;
-	}
-}
-
 void CPU::write(uint16_t addr, uint8_t data) {
 	bus->write(addr, data);
 }
@@ -77,7 +464,12 @@ uint16_t CPU::read_16b(uint16_t addr)
 	return two8b_to_16b(bus->read(addr+1), bus->read(addr));
 }
 
-bool CPU::check_condition(cond_type cc)
+uint8_t* CPU::get_addr(uint16_t addr)
+{
+	return nullptr;
+}
+
+bool CPU::check_condition(cond_type cc) const
 {
 	switch (cc)
 	{
@@ -93,8 +485,9 @@ bool CPU::check_condition(cond_type cc)
 	case CT_C:
 		//Jump if C flag is set.
 		return (AF.F.C);
+	case CT_NONE:
+		return true;
 	}
-	return true;
 }
 
 void CPU::LD(uint8_t* dest, uint8_t value)
