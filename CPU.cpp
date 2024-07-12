@@ -265,16 +265,15 @@ void CPU::fetch_instr()
 		RLCA();
 		return;
 	case IN_ADD:
-		if (opcode == 0xE8) {
-			ADD_SP((int8_t)curr_data.fetched_data);
-			return;
-		}
 		if (is_reg_16_bit(curr_instruction->reg_1)) {
 			ADD(read_reg_from_enum(curr_instruction->reg_2));
 		}
 		else {
 			ADD((u8)read_reg_from_enum(curr_instruction->reg_2));
 		}
+		return;
+	case IN_ADD_SP:
+		ADD_SP((int8_t)curr_data.fetched_data);
 		return;
 	case IN_RRCA:
 		RRCA();
@@ -464,10 +463,10 @@ uint16_t CPU::read_16b(uint16_t addr)
 	return two8b_to_16b(bus->read(addr+1), bus->read(addr));
 }
 
-uint8_t* CPU::get_addr(uint16_t addr)
-{
-	return nullptr;
-}
+//uint8_t* CPU::get_addr(uint16_t addr)
+//{
+//	return nullptr;
+//}
 
 bool CPU::check_condition(cond_type cc) const
 {
@@ -589,16 +588,19 @@ void CPU::CP(uint8_t value)
 
 void CPU::INC(uint8_t* n)
 {
+	bool aux = AF.F.C;
 	*n = add_8b(*n, 1);
 	// Carry flag not affected!
-	AF.F.C = 0;
+	AF.F.C = aux;
 }
 
 void CPU::DEC(uint8_t* n)
 {
+	bool aux = AF.F.C;
 	*n = sub_8b(*n, 1);
 	// Carry flag not affected!
-	AF.F.C = 0;
+	AF.F.C = aux;
+
 }
 
 void CPU::ADD(uint16_t value)

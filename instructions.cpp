@@ -261,7 +261,7 @@ instruction instructions[0x100] = {
     {IN_PUSH, AM_R, RT_HL},
     {IN_AND, AM_R_D8, RT_A},
     {IN_RST, AM_IMP, RT_NONE, RT_NONE, CT_NONE, 0x20},
-    {IN_ADD, AM_R_D8, RT_SP},
+    {IN_ADD_SP, AM_R_D8, RT_SP},
     {IN_JP, AM_R, RT_HL},
     {IN_LD, AM_A16_R, RT_NONE, RT_A},
     {},

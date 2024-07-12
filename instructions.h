@@ -51,6 +51,7 @@ enum in_type {
     IN_DEC,
     IN_RLCA,
     IN_ADD,
+    IN_ADD_SP,
     IN_RRCA,
     IN_STOP,
     IN_RLA,
