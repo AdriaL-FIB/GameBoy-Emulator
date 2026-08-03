@@ -2,3 +2,11 @@ http://www.codeslinger.co.uk/pages/projects/gameboy/files/GB.pdf
 https://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
 https://gekkio.fi/files/gb-docs/gbctr.pdf
 https://www.youtube.com/watch?v=mkYSHzSN0mM
+
+https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md
+https://gbdev.io/pandocs/Tile_Data.html#vram-tile-data
+https://meganesu.github.io/generate-gb-opcodes/
+https://github.com/Hacktix/GBEDG/tree/master
+
+http://www.z80.info/decoding.htm
+https://www.reddit.com/r/learnprogramming/comments/5lq5uk/decoding_lr35902z80_opcodes/

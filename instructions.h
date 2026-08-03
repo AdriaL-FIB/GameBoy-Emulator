@@ -2,30 +2,6 @@
 
 #include "common.h"
 
-enum addr_mode {
-    AM_IMP,
-    AM_R_D16,
-    AM_R_R,
-    AM_MR_R,
-    AM_R,
-    AM_R_D8,
-    AM_R_MR,
-    AM_R_HLI,
-    AM_R_HLD,
-    AM_HLI_R,
-    AM_HLD_R,
-    AM_R_A8,
-    AM_A8_R,
-    AM_HL_SPR,
-    AM_D16,
-    AM_D8,
-    AM_D16_R,
-    AM_MR_D8,
-    AM_MR,
-    AM_A16_R,
-    AM_R_A16
-};
-
 enum reg_type {
     RT_NONE,
     RT_A,
@@ -96,16 +72,45 @@ enum in_type {
     IN_SET
 };
 
-typedef enum {
-    CT_NONE, CT_NZ, CT_Z, CT_NC, CT_C
-} cond_type;
+enum cond_type {
+    CT_NONE,
+    CT_NZ,
+    CT_Z,
+    CT_NC,
+    CT_C
+};
+
+enum operand_type {
+    OT_NONE,   // No operand
+    OT_R,      // Register value
+    OT_D8,     // 8-bit immediate data
+    OT_D16,    // 16-bit immediate data
+    OT_MR,     // Memory addressed by a 16-bit register
+    OT_MC,     // Memory addressed by 0xFF00 + register C
+    OT_A8,     // Memory addressed by 0xFF00 + 8-bit immediate
+    OT_A16,    // Memory addressed by a 16-bit immediate
+    OT_HLI,    // Memory addressed by HL, then increments HL
+    OT_HLD,    // Memory addressed by HL, then decrements HL
+    OT_SPR8    // SP plus a signed 8-bit immediate
+};
+
+struct operand {
+    operand_type type;
+    reg_type reg;
+};
+
+enum operand_width {
+    WIDTH_NONE, // No transferred or operated data
+	WIDTH_8, // 8-bit data
+	WIDTH_16 // 16-bit data
+};
 
 struct instruction {
     in_type type;
-    addr_mode mode;
-    reg_type reg_1;
-    reg_type reg_2;
-    cond_type cond;
+    operand destination;
+    operand source;
+    operand_width width;
+    cond_type condition;
     u8 param;
 };
 

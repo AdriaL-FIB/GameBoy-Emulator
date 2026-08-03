@@ -1,4 +1,6 @@
 #include "Bus.h"
+#include "CPU.h"
+
 
 Bus::Bus() {
 	for (uint8_t& i : ram) i = 0x00;

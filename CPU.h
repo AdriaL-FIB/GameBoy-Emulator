@@ -1,11 +1,12 @@
 #pragma once
 #include <cstdint>
-#include "Bus.h"
 #include <string>
 #include <functional>
 #include "instructions.h"
 
 // http://www.codeslinger.co.uk/pages/projects/gameboy/files/GB.pdf
+
+class Bus;
 
 class CPU
 {
@@ -20,11 +21,11 @@ public:
 	// Flag Register
 	union FlagRegister {
 		struct {
-			bool Z : 1; // This bit is set when the result of a math operation is zero or two values match when using the CP instruction.
-			bool N : 1; // This bit is set if a subtraction was performed in the last math instruction.
-			bool H : 1; // This bit is set if a carry occurred from the lower nibble in the last math operation.
-			bool C : 1; // This bit is set if a carry occurred from the last math operation or if register A is the smaller value when executing the CP instruction
 			uint8_t unused : 4;
+			bool C : 1; // This bit is set if a carry occurred from the last math operation or if register A is the smaller value when executing the CP instruction
+			bool H : 1; // This bit is set if a carry occurred from the lower nibble in the last math operation.
+			bool N : 1; // This bit is set if a subtraction was performed in the last math instruction.
+			bool Z : 1; // This bit is set when the result of a math operation is zero or two values match when using the CP instruction.
 
 		};
 		uint8_t reg;
@@ -33,29 +34,29 @@ public:
 	// Registers
 	union AF {
 		struct {
-			uint8_t A;
 			FlagRegister F;
+			uint8_t A;
 		};
 		uint16_t reg;
 	};
 	union BC {
 		struct {
-			uint8_t B;
 			uint8_t C;
+			uint8_t B;
 		};
 		uint16_t reg;
 	};
 	union DE {
 		struct {
-			uint8_t D;
 			uint8_t E;
+			uint8_t D;
 		};
 		uint16_t reg;
 	};
 	union HL {
 		struct {
-			uint8_t H;
 			uint8_t L;
+			uint8_t H;
 		};
 		uint16_t reg;
 	};
@@ -80,54 +81,50 @@ public:
 	void LDI_HL_A(); // Put A into memory address HL. Increment HL.		Same as: LD (HL),A - INC HL
 	*/
 
-	// 8-bit load
-	void LD(uint8_t* dest, uint8_t value);
+	// 8-bit and 16-bit load
+	void LD();
 
 	// 16-bit load
-	void LD(uint16_t* dest, uint16_t value);
-	void PUSH(uint16_t value);
-	void POP(uint16_t* dest);
+	void PUSH();
+	void POP();
 
 	// 8-bit ALU
-	uint8_t add_8b(uint8_t dest, uint8_t value);
-	uint8_t sub_8b(uint8_t dest, uint8_t value);
+	uint8_t add_8b(uint8_t dest, uint8_t value, uint8_t carry = 0);
+	uint16_t add_16bs(uint16_t dest, int16_t value);
+	uint8_t sub_8b(uint8_t dest, uint8_t value, uint8_t borrow = 0);
 
-	// Add value to A
-	void ADD(uint8_t value); 
+	// 8-bit: Add value to A. 16-bit: Add value to HL.
+	void ADD(); 
 	// Add value + Carry flag to A
-	void ADC(uint8_t value); 
+	void ADC(); 
 	// Subtract value from A
-	void SUB(uint8_t value); 
+	void SUB(); 
 	// Subtract value + Carry flag from A.
-	void SBC(uint8_t value); 
+	void SBC(); 
 	// Logically AND value with A, result in A.
-	void AND(uint8_t value); 
+	void AND(); 
 	// Logical OR value with register A, result in A.
-	void OR(uint8_t value);
+	void OR();
 	// Logical exclusive OR value with register A, result in A.
-	void XOR(uint8_t value);
+	void XOR();
 	// Compare A with value. This is basically an A - value subtraction instruction but the results are thrown away.
-	void CP(uint8_t value); 
-	// Increment register n.
-	void INC(uint8_t* n); 
-	// Decrement register n.
-	void DEC(uint8_t* n); 
+	void CP(); 
+	// Increment register n or nn
+	void INC(); 
+	// Decrement register n or nn
+	void DEC(); 
 
 	// 16-bit Arithmetic
 	
-	// Add value to HL.
-	void ADD(uint16_t value); 
+	u16 add_16b(u16 dest, u16 value);
+
 	// Add one byte signed immediate value to SP.
-	void ADD_SP(int8_t signed_value); 
-	// Increment register nn.
-	void INC(uint16_t* nn); 
-	// Decrement register nn.
-	void DEC(uint16_t* nn); 
+	void ADD_SP(); 
 
 	// Miscellaneous
 	
-	// Swap upper & lower nibles of n.
-	void SWAP(uint8_t* n); 
+	// Swap upper & lower nibbles of register n.
+	void SWAP(); 
 	// Decimal adjust register A. This instruction adjusts register A so that the correct representation of Binary Coded Decimal(BCD) is obtained.
 	void DAA(); 
 	// Complement A register. (Flip all bits.)
@@ -144,7 +141,7 @@ public:
 	void STOP(); 
 	// This instruction disables interrupts but not immediately. Interrupts are disabled after instruction after DI is executed.
 	void DI(); 
-	// Enable interrupts. This intruction enables interrupts but not immediately.Interrupts are enabled after instruction after EI is executed.
+	// Enable interrupts. This instruction enables interrupts but not immediately.Interrupts are enabled after instruction after EI is executed.
 	void EI(); 
 
 	// Rotates & Shifts
@@ -167,54 +164,47 @@ public:
 	// Rotate A right through Carry flag.
 	void RRA(); 
 	// Rotate n left. Old bit 7 to Carry flag.
-	void RLC(uint8_t* n);
+	void RLC();
 	// Rotate n left through Carry flag.
-	void RL(uint8_t* n); 
+	void RL(); 
 	// Rotate n right. Old bit 0 to Carry flag.
-	void RRC(uint8_t* n); 
+	void RRC(); 
 	// Rotate n right through Carry flag.
-	void RR(uint8_t* n); 
+	void RR(); 
 	// Shift n left into Carry. LSB of n set to 0.
-	void SLA(uint8_t* n); 
+	void SLA(); 
 	// Shift n right into Carry. MSB doesn't change.
-	void SRA(uint8_t* n); 
+	void SRA(); 
 	// Shift n right into Carry. MSB set to 0.
-	void SRL(uint8_t* n); 
+	void SRL(); 
 
 	// Bit Opcodes
-	void BIT(uint8_t bit, uint8_t* r); // Test bit b in register r.
-	void SET(uint8_t bit, uint8_t* r); // Set bit b in register r.
-	void RES(uint8_t bit, uint8_t* r); // Reset bit b in register r.
+	void BIT(); // Test bit b in register r.
+	void SET(); // Set bit b in register r.
+	void RES(); // Reset bit b in register r.
 
 	// Jumps
 
 	// Jump to address nn. two byte immediate value. (LS byte first.)
-	void JP(uint16_t addr); 
-	// Jump to address n if cc condition is true.
-	void JP(cond_type cc, uint16_t addr); 
-	// Add n to current address and jump to it.
-	void JR(uint8_t addr); 
+	void JP(); 
 	// If following condition is true then add n to current address and jump to it
-	void JR(cond_type cc, uint8_t addr);
+	void JR(); 
 
 	// Calls
 
 	// Push address of next instruction onto stack and then jump to address nn. two byte immediate value. (LS byte first.)
-	void CALL(uint16_t nn); 
 	// Call address nn if following condition is true. two byte immediate value. (LS byte first.)
-	void CALL(cond_type cc, uint16_t nn);
+	void CALL();
 
 	// Restarts
 
 	// Push present address onto stack. Jump to address $0000 + n. n = $00,$08,$10,$18,$20,$28,$30,$38
-	void RST(uint8_t n); 
+	void RST(); 
 
 	// Returns
 
 	// Pop two bytes from stack & jump to that address.
 	void RET(); 
-	// Return if cc condition is true.
-	void RET(cond_type cc); 
 	// Pop two bytes from stack & jump to that address then enable interrupts.
 	void RETI(); 
 
@@ -232,8 +222,9 @@ private:
 	};
 	data curr_data;
 
-	void fetch_instr();
 	void fetch_data();
+	void execute_instr();
+	void post_process();
 	uint8_t opcode = 0x00;
 	instruction* curr_instruction;
 	Bus* bus = nullptr;

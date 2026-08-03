@@ -22,12 +22,14 @@
     <ClInclude Include="Bus.h" />
     <ClInclude Include="CPU.h" />
     <ClInclude Include="instructions.h" />
+    <ClInclude Include="PPU.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Bus.cpp" />
     <ClCompile Include="common.h" />
     <ClCompile Include="CPU.cpp" />
     <ClCompile Include="instructions.cpp" />
+    <ClCompile Include="PPU.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
