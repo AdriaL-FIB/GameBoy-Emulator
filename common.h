@@ -1,9 +1,8 @@
 #pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -19,3 +18,6 @@ typedef uint64_t u64;
 void delay(u32 ms);
 
 #define NO_IMPL { fprintf(stderr, "NOT YET IMPLEMENTED\n"); exit(-5); }
+
+#define IE_ADDR 0xFFFF
+#define IF_ADDR 0xFF0F

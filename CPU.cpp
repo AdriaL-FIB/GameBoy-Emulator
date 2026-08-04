@@ -1,6 +1,14 @@
 #include "CPU.h"
 #include "Bus.h"
 
+constexpr u16 INTERRUPT_VECTORS[5] = {
+	0x0040, // VBlank
+	0x0048, // LCD STAT
+	0x0050, // Timer
+	0x0058, // Serial
+	0x0060  // Joypad
+};
+
 CPU::CPU() {
 	//PC = 0x0100;
 	//SP = 0xFFFF;
@@ -99,30 +107,67 @@ u16 CPU::read_reg_from_enum(reg_type reg) const
 	}
 }
 
-bool CPU::is_reg_16_bit(reg_type reg) const
-{
-	return reg >= RT_AF;
-}
+//bool CPU::is_reg_16_bit(reg_type reg) const
+//{
+//	return reg >= RT_AF;
+//}
 
-void CPU::clock()
+u8 CPU::clock()
 {
+	if (IME) {
+		u8 IF = read(IF_ADDR);
+		u8 IE = read(IE_ADDR);
+
+		u8 pending = IE & IF & 0x1F;
+
+		if (pending) {
+			for (int i = 0; i < 5; ++i) {
+				if (CHECK_BIT(pending, i)) {
+					IME = false;
+					BIT_SET(IF, i, false);
+					write(IF_ADDR, IF);
+
+					CALL(INTERRUPT_VECTORS[i]);
+					return 20; // Add 5 M cycles
+				}
+			}
+		}
+	}
+
+	if (IME_scheduled) {
+		IME = true;
+		IME_scheduled = false;
+	}
+
 	curr_data = {};
 
 	opcode = read(PC++);
 
-	curr_instruction = instruction_by_opcode(opcode);
+	if (opcode == 0xCB) {
+		opcode = read(PC++);
+		curr_instruction = cb_instruction_by_opcode(opcode);
+	}
+	else {
+		curr_instruction = instruction_by_opcode(opcode);
+	}
+
 
 	fetch_data();
+
+	bool action_taken = check_condition(curr_instruction->condition);
 
 	execute_instr();
 
 	post_process();
+
+	if (action_taken) return curr_instruction->cycles_if_taken;
+	return curr_instruction->cycles;
 }
 
 void CPU::fetch_data() {
 
-	operand& src = curr_instruction->source;
-	operand& dst = curr_instruction->destination;
+	const operand& src = curr_instruction->source;
+	const operand& dst = curr_instruction->destination;
 
 	switch (src.type)
 	{
@@ -268,6 +313,7 @@ void CPU::execute_instr()
 	case IN_POP:
 		POP();
 		return;
+	case IN_JPHL:
 	case IN_JP:
 		JP();
 		return;
@@ -277,17 +323,11 @@ void CPU::execute_instr()
 	case IN_RET:
 		RET();
 		return;
-	case IN_CB:
-		// 
-		return;
 	case IN_CALL:
 		CALL();
 		return;
 	case IN_RETI:
 		RETI();
-		return;
-	case IN_JPHL:
-		NO_IMPL;
 		return;
 	case IN_DI:
 		DI();
@@ -302,26 +342,37 @@ void CPU::execute_instr()
 		// ?
 		return;
 	case IN_RLC:
+		RLC();
 		return;
 	case IN_RRC:
+		RRC();
 		return;
 	case IN_RL:
+		RL();
 		return;
 	case IN_RR:
+		RR();
 		return;
 	case IN_SLA:
+		SLA();
 		return;
 	case IN_SRA:
+		SRA();
 		return;
 	case IN_SWAP:
+		SWAP();
 		return;
 	case IN_SRL:
+		SRL();
 		return;
 	case IN_BIT:
+		BIT();
 		return;
 	case IN_RES:
+		RES();
 		return;
 	case IN_SET:
+		SET();
 		return;
 	default:
 		return;
@@ -347,7 +398,7 @@ void CPU::write(uint16_t addr, uint8_t data) {
 void CPU::write(uint16_t addr, uint16_t data)
 {
 	u8 h = data >> 8;
-	u8 l = data & 0x00FF;
+	u8 l = data & 0xFF;
 	bus->write(addr, l);
 	bus->write(addr+1, h);
 }
@@ -440,13 +491,13 @@ uint8_t CPU::add_8b(uint8_t dest, uint8_t value, uint8_t carry /*= 0*/)
 	return result;
 }
 
-uint16_t CPU::add_16bs(uint16_t dest, int16_t value)
+uint16_t CPU::add_16bs(uint16_t dest, int8_t value)
 {
 	u32 result = dest + value;
 	AF.F.Z = 0;
 	AF.F.N = 0;
-	AF.F.H = (dest ^ value ^ result) & 0x1000; // https://retrocomputing.stackexchange.com/questions/11262/can-someone-explain-this-algorithm-used-to-compute-the-auxiliary-carry-flag
-	AF.F.C = (dest ^ value ^ result) & 0x10000;
+	AF.F.H = (dest ^ value ^ result) & 0x10; // https://retrocomputing.stackexchange.com/questions/11262/can-someone-explain-this-algorithm-used-to-compute-the-auxiliary-carry-flag
+	AF.F.C = (dest ^ value ^ result) & 0x100;
 
 	return result;
 }
@@ -640,12 +691,13 @@ void CPU::STOP()
 
 void CPU::DI()
 {
-	NO_IMPL;
+	IME_scheduled = false;
+	IME = false;
 }
 
 void CPU::EI()
 {
-	NO_IMPL;
+	IME_scheduled = true;
 }
 
 uint8_t CPU::rotate_left(uint8_t n)
@@ -810,14 +862,19 @@ void CPU::JR()
 		PC += offset;
 }
 
+void CPU::CALL(u16 address)
+{
+	SP -= 2;
+	write(SP, PC);
+	PC = address;
+}
+
 void CPU::CALL()
 {
 	cond_type cc = curr_instruction->condition;
 	u16 nn = curr_data.fetched_data;
 	if (check_condition(cc)) { 
-		SP -= 2;
-		write(SP, PC); // nota, quizas quitar el +1
-		PC = nn;
+		CALL(nn);
 	}
 }
 
@@ -841,5 +898,5 @@ void CPU::RET()
 void CPU::RETI()
 {
 	RET();
-	EI();
+	IME = true;
 }

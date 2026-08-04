@@ -90,7 +90,7 @@ public:
 
 	// 8-bit ALU
 	uint8_t add_8b(uint8_t dest, uint8_t value, uint8_t carry = 0);
-	uint16_t add_16bs(uint16_t dest, int16_t value);
+	uint16_t add_16bs(uint16_t dest, int8_t value);
 	uint8_t sub_8b(uint8_t dest, uint8_t value, uint8_t borrow = 0);
 
 	// 8-bit: Add value to A. 16-bit: Add value to HL.
@@ -192,6 +192,8 @@ public:
 
 	// Calls
 
+	void CALL(u16 address);
+
 	// Push address of next instruction onto stack and then jump to address nn. two byte immediate value. (LS byte first.)
 	// Call address nn if following condition is true. two byte immediate value. (LS byte first.)
 	void CALL();
@@ -211,7 +213,7 @@ public:
 
 
 
-	void clock();
+	u8 clock();
 
 
 private:
@@ -226,12 +228,12 @@ private:
 	void execute_instr();
 	void post_process();
 	uint8_t opcode = 0x00;
-	instruction* curr_instruction;
+	const instruction* curr_instruction;
 	Bus* bus = nullptr;
 
 	void* get_reg_from_enum(reg_type reg);
 	u16 read_reg_from_enum(reg_type reg) const;
-	bool is_reg_16_bit(reg_type reg) const;
+	//bool is_reg_16_bit(reg_type reg) const;
 
 	//uint16_t* get_reg16_from_enum(reg_type reg);
 
@@ -241,10 +243,13 @@ private:
 	uint16_t read_16b(uint16_t addr);
 
 	// Converts 16-bit address fake ram to system address
-	uint8_t* get_addr(uint16_t addr);
+	//uint8_t* get_addr(uint16_t addr);
 
 	bool check_condition(cond_type cc) const;
 
+	// Interrupts
+	bool IME = false; // Interrupts Master Enable
+	bool IME_scheduled = false;
 
 };
 

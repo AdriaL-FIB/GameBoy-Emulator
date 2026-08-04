@@ -49,7 +49,7 @@ enum in_type {
     IN_JP,
     IN_PUSH,
     IN_RET,
-    IN_CB,
+    //IN_CB,
     IN_CALL,
     IN_RETI,
     IN_LDH,
@@ -106,14 +106,18 @@ enum operand_width {
 };
 
 struct instruction {
-    in_type type;
-    operand destination;
-    operand source;
-    operand_width width;
-    cond_type condition;
-    u8 param;
+	in_type type;
+	operand destination;
+	operand source;
+	operand_width width;
+	cond_type condition;
+	u8 param;
+	u8 cycles;
+	u8 cycles_if_taken;
 };
 
-instruction* instruction_by_opcode(u8 opcode);
+
+const instruction* instruction_by_opcode(u8 opcode);
+const instruction* cb_instruction_by_opcode(u8 opcode);
 
 char* inst_name(in_type t);
