@@ -10,3 +10,7 @@ https://github.com/Hacktix/GBEDG/tree/master
 
 http://www.z80.info/decoding.htm
 https://www.reddit.com/r/learnprogramming/comments/5lq5uk/decoding_lr35902z80_opcodes/
+https://gbdev.io/resources.html
+https://gbdev.io/pandocs/Interrupts.html
+https://gbdev.io/gb-opcodes/optables/
+https://gbdev.io/resources.html#the-ultimate-game-boy-talk

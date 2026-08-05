@@ -49,7 +49,7 @@ enum in_type {
     IN_JP,
     IN_PUSH,
     IN_RET,
-    //IN_CB,
+    IN_CB,
     IN_CALL,
     IN_RETI,
     IN_LDH,
@@ -120,4 +120,4 @@ struct instruction {
 const instruction* instruction_by_opcode(u8 opcode);
 const instruction* cb_instruction_by_opcode(u8 opcode);
 
-char* inst_name(in_type t);
+//char* inst_name(in_type t);

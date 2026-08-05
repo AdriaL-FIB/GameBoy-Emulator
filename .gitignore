@@ -6,6 +6,7 @@
 *.txt
 *.pdf
 *.md
+*.gb
 
 # User-specific files
 *.rsuser
@@ -365,3 +366,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+resource.h
+GBAEmulator.rc

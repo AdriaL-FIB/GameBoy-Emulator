@@ -1,22 +1,175 @@
 #include "Bus.h"
 #include "CPU.h"
 
-
-Bus::Bus() {
-	for (uint8_t& i : ram) i = 0x00;
-
-	cpu.connectBus(this);
+// https://gbdev.io/pandocs/Power_Up_Sequence.html
+Bus::Bus(CPU* cpu, Cartridge* cart, PPU* ppu, Timer* timer) :
+	wram{},
+	hram{},
+	IE(0x00),
+	IF(0xE1)
+{
+	this->cpu = cpu;
+	this->cartridge = cart;
+	this->ppu = ppu;
+	this->timer = timer;
 }
 
 Bus::~Bus() {}
 
-void Bus::write(uint16_t addr, uint8_t data) {
-	if (addr >= 0x0000 and addr <= 0xFFFF)
-		ram[addr] = data;
+
+void Bus::handle_IO_write(u16 addr, u8 data)
+{
+	if (addr == 0xFF00)
+	{
+		// Joypad Input
+		return;
+	}
+
+	if (BETWEEN(addr, 0xFF01, 0xFF02))
+	{
+		// Serial transfer
+		return;
+	}
+
+	if (BETWEEN(addr, 0xFF04, 0xFF07))
+	{
+		timer->write(addr, data);
+		return;
+	}
+
+	if (addr == 0xFF0F)
+	{
+		IF = data & 0x1F;
+		return;
+	}
+
+	if (BETWEEN(addr, 0xFF10, 0xFF3F))
+	{
+		// Audio registers
+		return;
+	}
+
+	if (BETWEEN(addr, 0xFF40, 0xFF4B))
+	{
+		// LCD (PPU)
+		ppu->write(addr, data);
+		return;
+	}
 }
 
-uint8_t Bus::read(uint16_t addr) {
-	if (addr >= 0x0000 and addr <= 0xFFFF)
-		return ram[addr];
-	return 0x00;
+void Bus::write(u16 addr, u8 data) {
+	if (addr <= 0x7FFF) // Cartridge
+	{
+		cartridge->write(addr, data);
+		return;
+	}
+
+	if (addr <= 0x9FFF) // PPU VRAM
+	{
+		ppu->write(addr, data);
+		return;
+	}
+
+	if (addr <= 0xBFFF) // Cartridge RAM, 8kB switchable RAM bank
+	{
+		cartridge->write(addr, data);
+		return;
+	}
+
+	if (addr <= 0xDFFF) // WRAM (Internal RAM) (Work RAM)
+	{
+		wram[addr - 0xC000] = data;
+		return;
+	}
+
+	if (addr <= 0xFDFF) // WRAM mirror E000-FDFF --> C000-DDFF
+	{
+		wram[addr - 0xE000] = data;
+		return;
+	}
+
+	if (addr <= 0xFE9F) // Sprite Attrib Memory (OAM)
+	{
+		ppu->write(addr, data);
+		return;
+	}
+
+	if (addr <= 0xFEFF) // Unusable
+	{
+		return;
+	}
+
+	if (addr <= 0xFF7F) // I/O Ports
+	{
+		handle_IO_write(addr, data);
+		return;
+	}
+
+	if (addr <= 0xFFFE) // HRAM (Internal RAM)
+	{
+		hram[addr - 0xFF80] = data;
+		return;
+	}
+
+	// Interrupt enable register IE
+	IE = data & 0x1F;
+}
+
+u8 Bus::handle_IO_read(u16 addr) {
+	if (addr == 0xFF00)
+		// Joypad Input
+		return 0xFF;
+
+	if (BETWEEN(addr, 0xFF01, 0xFF02))
+		// Serial transfer
+		return 0xFF;
+
+	if (BETWEEN(addr, 0xFF04, 0xFF07))
+		return timer->read(addr);
+
+	if (addr == 0xFF0F)
+		return IF;
+
+	if (BETWEEN(addr, 0xFF10, 0xFF3F))
+		// Audio registers
+		return 0xFF;
+
+	if (BETWEEN(addr, 0xFF40, 0xFF4B))
+		// LCD (PPU)
+		return ppu->read(addr);
+
+	return 0xFF;
+}
+
+u8 Bus::read(u16 addr) {
+
+	if (addr <= 0x7FFF) // Cartridge
+		return cartridge->read(addr);
+
+	if (addr <= 0x9FFF) // PPU VRAM
+		return ppu->read(addr);
+
+	if (addr <= 0xBFFF) // Cartridge RAM, 8kB switchable RAM bank 
+		return cartridge->read(addr);
+
+	if (addr <= 0xDFFF) // WRAM (Internal RAM) (Work RAM)
+		return wram[addr - 0xC000];
+
+	if (addr <= 0xFDFF) // WRAM mirror E000-FDFF --> C000-DDFF
+		return wram[addr - 0xE000];
+
+	if (addr <= 0xFE9F) // Sprite Attrib Memory (OAM)
+		return ppu->read(addr);
+
+	if (addr <= 0xFEFF) // Unusable
+		return 0xFF;
+
+	if (addr <= 0xFF7F) // I/O Ports
+		return handle_IO_read(addr);
+
+	if (addr <= 0xFFFE) // HRAM (Internal RAM)
+		return hram[addr - 0xFF80];
+
+	// Interrupt enable register IE
+	return IE;
 }

@@ -20,16 +20,27 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bus.h" />
+    <ClInclude Include="Cartridge.h" />
     <ClInclude Include="CPU.h" />
+    <ClInclude Include="GameBoy.h" />
     <ClInclude Include="instructions.h" />
     <ClInclude Include="PPU.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="Timer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Bus.cpp" />
+    <ClCompile Include="Cartridge.cpp" />
     <ClCompile Include="common.h" />
     <ClCompile Include="CPU.cpp" />
+    <ClCompile Include="GameBoy.cpp" />
     <ClCompile Include="instructions.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="PPU.cpp" />
+    <ClCompile Include="Timer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="GBAEmulator.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

@@ -14,9 +14,9 @@ public:
 	CPU();
 	~CPU();
 
-	void connectBus(Bus* b) { bus = b; }
+	void connect_bus(Bus* b) { bus = b; }
 
-public:
+private:
 
 	// Flag Register
 	union FlagRegister {
@@ -211,9 +211,9 @@ public:
 	void RETI(); 
 
 
+public:
 
-
-	u8 clock();
+	u8 step_instruction();
 
 
 private:

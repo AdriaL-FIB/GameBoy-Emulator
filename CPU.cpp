@@ -9,7 +9,10 @@ constexpr u16 INTERRUPT_VECTORS[5] = {
 	0x0060  // Joypad
 };
 
-CPU::CPU() {
+CPU::CPU() :
+	curr_data{},
+	curr_instruction{}
+{
 	//PC = 0x0100;
 	//SP = 0xFFFF;
 	//AF.reg = 0x0000;
@@ -112,7 +115,7 @@ u16 CPU::read_reg_from_enum(reg_type reg) const
 //	return reg >= RT_AF;
 //}
 
-u8 CPU::clock()
+u8 CPU::step_instruction()
 {
 	if (IME) {
 		u8 IF = read(IF_ADDR);
@@ -488,7 +491,7 @@ uint8_t CPU::add_8b(uint8_t dest, uint8_t value, uint8_t carry /*= 0*/)
 	AF.F.N = 0;
 	AF.F.H = (dest ^ value ^ result) & 0x10; // https://retrocomputing.stackexchange.com/questions/11262/can-someone-explain-this-algorithm-used-to-compute-the-auxiliary-carry-flag
 	AF.F.C = (dest ^ value ^ result) & 0x100;
-	return result;
+	return (u8)result;
 }
 
 uint16_t CPU::add_16bs(uint16_t dest, int8_t value)
@@ -509,7 +512,7 @@ uint8_t CPU::sub_8b(uint8_t dest, uint8_t value, uint8_t borrow /*= 0*/)
 	AF.F.N = 1;
 	AF.F.H = (dest ^ value ^ result) & 0x10;
 	AF.F.C = (dest ^ value ^ result) & 0x100;
-	return result;
+	return (u8)result;
 }
 
 void CPU::ADD()
@@ -518,23 +521,23 @@ void CPU::ADD()
 		HL.reg = add_16b(HL.reg, curr_data.fetched_data);
 	}
 	else {
-		AF.A = add_8b(AF.A, curr_data.fetched_data);
+		AF.A = add_8b(AF.A, (u8)curr_data.fetched_data);
 	}
 }
 
 void CPU::ADC()
 {
-	AF.A = add_8b(AF.A, curr_data.fetched_data, AF.F.C);
+	AF.A = add_8b(AF.A, (u8)curr_data.fetched_data, AF.F.C);
 }
 
 void CPU::SUB()
 {
-	AF.A = sub_8b(AF.A, curr_data.fetched_data);
+	AF.A = sub_8b(AF.A, (u8)curr_data.fetched_data);
 }
 
 void CPU::SBC()
 {
-	AF.A = sub_8b(AF.A, curr_data.fetched_data, AF.F.C);
+	AF.A = sub_8b(AF.A, (u8)curr_data.fetched_data, AF.F.C);
 }
 
 void CPU::AND()
@@ -712,7 +715,7 @@ uint8_t CPU::rotate_left(uint8_t n)
 
 uint8_t CPU::rotate_left_carry(uint8_t n)
 {
-	u8 result = (n << 1) | (AF.F.C);
+	u8 result = (n << 1) | u8(AF.F.C);
 	AF.F.Z = result == 0;
 	AF.F.N = 0;
 	AF.F.H = 0;
