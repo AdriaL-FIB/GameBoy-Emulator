@@ -367,4 +367,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 resource.h
-GBAEmulator.rc
+GameBoyEmulator.rc

@@ -40,13 +40,13 @@
     <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="GBAEmulator.rc" />
+    <ResourceCompile Include="GameBoyEmulator.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{98ec3ec1-3828-4437-ac6f-e761245b3b10}</ProjectGuid>
-    <RootNamespace>GBAEmulator</RootNamespace>
+    <RootNamespace>GameBoyEmulator</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
