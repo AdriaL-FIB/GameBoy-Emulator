@@ -47,7 +47,7 @@ namespace {
     }
 }
 
-instruction instructions[] = {
+constexpr instruction instructions[] = {
     instr(IN_NOP, 4),                                                   // 0x00 NOP
     instr(IN_LD, 12,   op(OT_R, RT_BC), op(OT_D16),       WIDTH_16),    // 0x01 LD BC,d16
     instr(IN_LD, 8,   op(OT_MR, RT_BC), op(OT_R, RT_A),  WIDTH_8),     // 0x02 LD (BC),A

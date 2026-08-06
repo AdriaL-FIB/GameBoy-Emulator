@@ -1,6 +1,8 @@
 #include "Bus.h"
 #include "CPU.h"
 
+#include <iostream>
+
 // https://gbdev.io/pandocs/Power_Up_Sequence.html
 Bus::Bus(CPU* cpu, Cartridge* cart, PPU* ppu, Timer* timer) :
 	wram{},
@@ -16,6 +18,7 @@ Bus::Bus(CPU* cpu, Cartridge* cart, PPU* ppu, Timer* timer) :
 
 Bus::~Bus() {}
 
+u8 sb, sc;
 
 void Bus::handle_IO_write(u16 addr, u8 data)
 {
@@ -25,11 +28,20 @@ void Bus::handle_IO_write(u16 addr, u8 data)
 		return;
 	}
 
-	if (BETWEEN(addr, 0xFF01, 0xFF02))
+	// Serial transfer
+	// DEBUG
+	if (addr == 0xFF01)
 	{
-		// Serial transfer
+		sb = data;
 		return;
 	}
+
+	if (addr == 0xFF02)
+	{
+		sc = data;
+		std::cout << sb;
+	}
+
 
 	if (BETWEEN(addr, 0xFF04, 0xFF07))
 	{

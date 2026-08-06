@@ -179,9 +179,12 @@ private:
 	void SRL(); 
 
 	// Bit Opcodes
-	void BIT(); // Test bit b in register r.
-	void SET(); // Set bit b in register r.
-	void RES(); // Reset bit b in register r.
+	// Test bit b in register r.
+	void BIT();
+	// Set bit b in register r. (set to 1)
+	void SET();
+	// Reset bit b in register r. (set to 0)
+	void RES();
 
 	// Jumps
 
@@ -212,38 +215,38 @@ private:
 
 
 public:
-
 	u8 step_instruction();
 
-
 private:
-	struct data {
-		u16 fetched_data;
-		u16 mem_dest;
-		bool dest_is_mem;
-	};
-	data curr_data;
-
-	void fetch_data();
 	void execute_instr();
 	void post_process();
 	uint8_t opcode = 0x00;
 	const instruction* curr_instruction;
 	Bus* bus = nullptr;
 
-	void* get_reg_from_enum(reg_type reg);
-	u16 read_reg_from_enum(reg_type reg) const;
+	u8 read_reg8(reg_type reg) const;
+	void write_reg8(reg_type reg, u8 data);
+
+	u16 read_reg16(reg_type reg) const;
+	void write_reg16(reg_type reg, u16 data);
+
+	u8 read_operand8(const operand& op);
+	u16 read_operand16(const operand& op);
+
+	void write_operand8(const operand& op, u8 data);
+	void write_operand16(const operand& op, u16 data);
+
 	//bool is_reg_16_bit(reg_type reg) const;
 
 	//uint16_t* get_reg16_from_enum(reg_type reg);
 
-	void write(uint16_t addr, uint8_t data);
-	void write(uint16_t addr, uint16_t data);
-	uint8_t read(uint16_t addr);
-	uint16_t read_16b(uint16_t addr);
+	void write(u16 addr, u8 data);
+	void write(u16 addr, u16 data);
+	u8 read(u16 addr);
+	u16 read_16b(u16 addr);
 
 	// Converts 16-bit address fake ram to system address
-	//uint8_t* get_addr(uint16_t addr);
+	//u8* get_addr(uint16_t addr);
 
 	bool check_condition(cond_type cc) const;
 

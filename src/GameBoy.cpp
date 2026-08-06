@@ -16,7 +16,7 @@ void GameBoy::game_loop()
 {
 	running = true;
 	u64 total_cycles = 0;
-	u64 cycle_limit = 99999999;
+	u64 cycle_limit = 999999999;
 
 	while (running and total_cycles <= cycle_limit)
 	{
