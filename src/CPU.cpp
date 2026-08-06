@@ -653,7 +653,22 @@ void CPU::SWAP()
 
 void CPU::DAA()
 {
-	NO_IMPL;
+	u8 offset = 0x00;
+	if ((not AF.F.N and (AF.A & 0xF) > 0x09) or AF.F.H)
+	{
+		offset |= 0x06;
+	}
+	if ((not AF.F.N and AF.A > 0x99) or AF.F.C)
+	{
+		offset |= 0x60;
+		AF.F.C = 1;
+	}
+
+	if (AF.F.N) AF.A -= offset;
+	else AF.A += offset;
+
+	AF.F.Z = AF.A == 0;
+	AF.F.H = 0;
 }
 
 void CPU::CPL()
