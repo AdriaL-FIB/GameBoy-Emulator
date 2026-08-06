@@ -19,25 +19,31 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Bus.h" />
-    <ClInclude Include="Cartridge.h" />
-    <ClInclude Include="CPU.h" />
-    <ClInclude Include="GameBoy.h" />
-    <ClInclude Include="instructions.h" />
-    <ClInclude Include="PPU.h" />
+    <ClInclude Include="src\Bus.h" />
+    <ClInclude Include="src\Cartridge.h" />
+    <ClInclude Include="src\common.h" />
+    <ClInclude Include="src\CPU.h" />
+    <ClInclude Include="src\GameBoy.h" />
+    <ClInclude Include="src\instructions.h" />
+    <ClInclude Include="src\mappers\Mapper.h" />
+    <ClInclude Include="src\mappers\MBC1.h" />
+    <ClInclude Include="src\mappers\NoMBC.h" />
+    <ClInclude Include="src\PPU.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="Timer.h" />
+    <ClInclude Include="src\Timer.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Bus.cpp" />
-    <ClCompile Include="Cartridge.cpp" />
-    <ClCompile Include="common.h" />
-    <ClCompile Include="CPU.cpp" />
-    <ClCompile Include="GameBoy.cpp" />
-    <ClCompile Include="instructions.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="PPU.cpp" />
-    <ClCompile Include="Timer.cpp" />
+    <ClCompile Include="src\Bus.cpp" />
+    <ClCompile Include="src\Cartridge.cpp" />
+    <ClCompile Include="src\CPU.cpp" />
+    <ClCompile Include="src\GameBoy.cpp" />
+    <ClCompile Include="src\instructions.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\mappers\Mapper.cpp" />
+    <ClCompile Include="src\mappers\MBC1.cpp" />
+    <ClCompile Include="src\mappers\NoMBC.cpp" />
+    <ClCompile Include="src\PPU.cpp" />
+    <ClCompile Include="src\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="GameBoyEmulator.rc" />
@@ -94,6 +100,11 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\mappers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>

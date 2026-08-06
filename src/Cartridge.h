@@ -3,10 +3,7 @@
 #include "common.h"
 #include <vector>
 #include <string>
-#include <fstream>
-
-constexpr int ROM_BANK_SIZE = (16 * 1024);
-constexpr int RAM_BANK_SIZE = (8 * 1024);
+#include "Mapper.h"
 
 class Cartridge
 {
@@ -14,17 +11,18 @@ private:
 	std::vector<u8> rom;
 	std::vector<u8> ram;
 
-	// ((address - external_ram_start_address) + (active_ram_bank * ram_bank_size)) % max_external_ram_size
+	Mapper* mapper;
 
-	u16 selected_rom_bank = 1;
-	u8 selected_ram_bank = 0;
+	// ((address - external_ram_start_address) + (active_ram_bank * ram_bank_size)) % max_external_ram_size
 
 	u8 cartridge_type;
 	//u8 rom_size;
 	//u8 ram_size;
 
-	//MBC1
-	bool is_ram_enabled = false;
+	//int rom_size;
+
+private:
+	Mapper* create_mapper(u8 cartridge_type);
 
 public:
 	bool load(const std::string& path);

@@ -15,57 +15,75 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CPU.h">
+    <ClInclude Include="src\CPU.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Bus.h">
+    <ClInclude Include="src\Bus.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="instructions.h">
+    <ClInclude Include="src\instructions.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="PPU.h">
+    <ClInclude Include="src\PPU.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Cartridge.h">
+    <ClInclude Include="src\Cartridge.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Timer.h">
+    <ClInclude Include="src\Timer.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="GameBoy.h">
+    <ClInclude Include="src\GameBoy.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mappers\Mapper.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mappers\NoMBC.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mappers\MBC1.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CPU.cpp">
+    <ClCompile Include="src\CPU.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Bus.cpp">
+    <ClCompile Include="src\Bus.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="common.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClCompile>
-    <ClCompile Include="instructions.cpp">
+    <ClCompile Include="src\instructions.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="PPU.cpp">
+    <ClCompile Include="src\PPU.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Cartridge.cpp">
+    <ClCompile Include="src\Cartridge.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Timer.cpp">
+    <ClCompile Include="src\Timer.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="src\main.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="GameBoy.cpp">
+    <ClCompile Include="src\GameBoy.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mappers\Mapper.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mappers\NoMBC.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mappers\MBC1.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
   </ItemGroup>
