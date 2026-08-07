@@ -28,10 +28,17 @@ private: // Devices on Bus
 	u8 IE; // FFFF
 	u8 IF; // FF0F
 
+private:
+	u8 handle_IO_read(u16 addr);
+	void handle_IO_write(u16 addr, u8 data);
+
 public: // Bus read & write
 	void write(u16 addr, u8 data);
 	u8 read(u16 addr);
-	u8 handle_IO_read(u16 addr);
-	void handle_IO_write(u16 addr, u8 data);
+
+	void write_IE(u8 value);
+	void write_IF(u8 value);
+	u8 read_IE();
+	u8 read_IF();
 };
 

@@ -51,7 +51,7 @@ void Bus::handle_IO_write(u16 addr, u8 data)
 
 	if (addr == 0xFF0F)
 	{
-		IF = data & 0x1F;
+		write_IF(data);
 		return;
 	}
 
@@ -124,7 +124,7 @@ void Bus::write(u16 addr, u8 data) {
 	}
 
 	// Interrupt enable register IE
-	IE = data & 0x1F;
+	write_IE(data);
 }
 
 u8 Bus::handle_IO_read(u16 addr) {
@@ -184,4 +184,24 @@ u8 Bus::read(u16 addr) {
 
 	// Interrupt enable register IE
 	return IE;
+}
+
+void Bus::write_IE(u8 value)
+{
+	IE = value & 0x1F | 0xE0;
+}
+
+void Bus::write_IF(u8 value)
+{
+	IF = value & 0x1F | 0xE0;
+}
+
+u8 Bus::read_IE()
+{
+	return IE;
+}
+
+u8 Bus::read_IF()
+{
+	return IF;
 }

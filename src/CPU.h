@@ -215,6 +215,7 @@ private:
 
 
 public:
+	// returns t-cycles
 	u8 step_instruction();
 
 private:
