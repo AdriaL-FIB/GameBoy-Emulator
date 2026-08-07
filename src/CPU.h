@@ -17,6 +17,17 @@ public:
 	void connect_bus(Bus* b) { bus = b; }
 
 private:
+	uint8_t opcode = 0x00;
+	const instruction* curr_instruction;
+	Bus* bus = nullptr;
+	// Interrupts
+	bool IME = false; // Interrupts Master Enable
+	bool IME_scheduled = false;
+
+	bool halted = false;
+	bool halt_bug = false;
+
+private:
 
 	// Flag Register
 	union FlagRegister {
@@ -221,9 +232,6 @@ public:
 private:
 	void execute_instr();
 	void post_process();
-	uint8_t opcode = 0x00;
-	const instruction* curr_instruction;
-	Bus* bus = nullptr;
 
 	u8 read_reg8(reg_type reg) const;
 	void write_reg8(reg_type reg, u8 data);
@@ -250,10 +258,5 @@ private:
 	//u8* get_addr(uint16_t addr);
 
 	bool check_condition(cond_type cc) const;
-
-	// Interrupts
-	bool IME = false; // Interrupts Master Enable
-	bool IME_scheduled = false;
-
 };
 

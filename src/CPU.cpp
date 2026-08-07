@@ -34,10 +34,25 @@ uint16_t two8b_to_16b(uint8_t h, uint16_t l) {
 
 u8 CPU::step_instruction()
 {
+	if (halted)
+	{
+		u8 IF = bus->read_IF();
+		u8 IE = bus->read_IE();
+
+		u8 pending = IE & IF & 0x1F;
+
+		if (pending)
+		{
+			halted = false;
+		}
+	}
+
+	if (halted) return 4; // 1 M-Cycle
+
 	// Interruptions
 	if (IME) {
-		u8 IF = read(IF_ADDR);
-		u8 IE = read(IE_ADDR);
+		u8 IF = bus->read_IF();
+		u8 IE = bus->read_IE();
 
 		u8 pending = IE & IF & 0x1F;
 
@@ -48,6 +63,13 @@ u8 CPU::step_instruction()
 					BIT_SET(IF, i, false);
 					write(IF_ADDR, IF);
 
+					// Return address should point to the previous executed halt
+					if (halt_bug)
+					{
+						PC--;
+						halt_bug = false;
+					}
+
 					CALL(INTERRUPT_VECTORS[i]);
 					return 20; // Add 5 M cycles
 				}
@@ -55,13 +77,14 @@ u8 CPU::step_instruction()
 		}
 	}
 
-	if (IME_scheduled) {
-		IME = true;
-		IME_scheduled = false;
-	}
-
+	bool IME_was_scheduled = IME_scheduled;
 
 	opcode = read(PC++);
+	if (halt_bug)
+	{
+		PC--;
+		halt_bug = false;
+	}
 
 	if (opcode == 0xCB) {
 		opcode = read(PC++);
@@ -76,6 +99,11 @@ u8 CPU::step_instruction()
 	execute_instr();
 
 	post_process();
+
+	if (IME_was_scheduled and IME_scheduled) {
+		IME = true;
+		IME_scheduled = false;
+	}
 
 	if (action_taken) return curr_instruction->cycles_if_taken;
 	return curr_instruction->cycles;
@@ -605,7 +633,7 @@ void CPU::XOR()
 
 void CPU::CP()
 {
-	u16 value = read_operand8(curr_instruction->source);
+	u8 value = read_operand8(curr_instruction->source);
 	sub_8b(AF.A, value);
 }
 
@@ -704,7 +732,15 @@ void CPU::NOP(){}
 
 void CPU::HALT()
 {
-	NO_IMPL;
+	u8 IF = bus->read_IF();
+	u8 IE = bus->read_IE();
+
+	u8 pending = IE & IF & 0x1F;
+
+	if (IME == 0 and pending)
+		halt_bug = true;
+	else
+		halted = true;
 }
 
 void CPU::STOP()
