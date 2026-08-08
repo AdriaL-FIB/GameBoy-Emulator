@@ -70,6 +70,15 @@ void Bus::handle_IO_write(u16 addr, u8 data)
 }
 
 void Bus::write(u16 addr, u8 data) {
+
+	if (BETWEEN(addr, 0xFF80, 0xFFFE)) // HRAM (Internal RAM)
+	{
+		hram[addr - 0xFF80] = data;
+		return;
+	}
+
+	if (ppu->dma_active()) return;
+
 	if (addr <= 0x7FFF) // Cartridge
 	{
 		cartridge->write(addr, data);
@@ -117,12 +126,6 @@ void Bus::write(u16 addr, u8 data) {
 		return;
 	}
 
-	if (addr <= 0xFFFE) // HRAM (Internal RAM)
-	{
-		hram[addr - 0xFF80] = data;
-		return;
-	}
-
 	// Interrupt enable register IE
 	write_IE(data);
 }
@@ -155,6 +158,11 @@ u8 Bus::handle_IO_read(u16 addr) {
 
 u8 Bus::read(u16 addr) {
 
+	if (BETWEEN(addr, 0xFF80, 0xFFFE)) // HRAM (Internal RAM)
+		return hram[addr - 0xFF80];
+
+	if (ppu->dma_active()) return 0xFF;
+
 	if (addr <= 0x7FFF) // Cartridge
 		return cartridge->read(addr);
 
@@ -178,9 +186,6 @@ u8 Bus::read(u16 addr) {
 
 	if (addr <= 0xFF7F) // I/O Ports
 		return handle_IO_read(addr);
-
-	if (addr <= 0xFFFE) // HRAM (Internal RAM)
-		return hram[addr - 0xFF80];
 
 	// Interrupt enable register IE
 	return IE;

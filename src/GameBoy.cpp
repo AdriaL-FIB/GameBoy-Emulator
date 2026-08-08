@@ -25,5 +25,6 @@ void GameBoy::game_loop()
 		total_cycles += cycles;
 
 		timer.tick(cycles);
+		ppu.tick(cycles);
 	}
 }
