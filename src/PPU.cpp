@@ -201,12 +201,94 @@ void PPU::tick(u8 tcycles)
 
 u8 PPU::read(u16 addr)
 {
-	return 0xFF;
+	u8 ppu_mode = stat.ppu_mode();
+
+	if (ppu_mode <= 2) // If in mode 3, VRAM is locked
+	{
+		if (addr <= 0x97FF)
+			return tile_data[addr - 0x8000];
+
+		if (addr <= 0x9FFF)
+			return tile_maps[addr - 0x9800];
+
+		if (addr <= 0xFE9F and ppu_mode <= 1) // If in mode 3 or 2, Sprite Attrib Memory (OAM) is locked
+			return oam[addr - 0xFE00];
+	}
+
+	switch (addr)
+	{
+	case 0xFF40:
+		return lcdc.value;
+	case 0xFF41:
+		return stat.value;
+	case 0xFF42:
+		return scy;
+	case 0xFF43:
+		return scx;
+	case 0xFF44:
+		return ly;
+	case 0xFF45:
+		return lyc;
+	case 0xFF46:
+		return oam_dma;
+	case 0xFF47:
+		return bgp;
+	case 0xFF48:
+		return obp0;
+	case 0xFF49:
+		return obp1;
+	case 0xFF4A:
+		return wy;
+	case 0xFF4B:
+		return wx;
+	default:
+		return 0xFF;
+	}
 }
 
 void PPU::write(u16 addr, u8 data)
 {
+	u8 ppu_mode = stat.ppu_mode();
+	if (ppu_mode <= 2) // If in mode 3, VRAM is locked
+	{
+		if (addr <= 0x97FF)
+			tile_data[addr - 0x8000] = data;
 
+		if (addr <= 0x9FFF)
+			tile_maps[addr - 0x9800] = data;
+
+
+		if (addr <= 0xFE9F and ppu_mode <= 1) // If in mode 3 or 2, Sprite Attrib Memory (OAM) is locked
+			oam[addr - 0xFE00] = data;
+	}
+
+
+
+	switch (addr)
+	{
+	case 0xFF40:
+		lcdc.value = data;
+	case 0xFF41:
+		stat.value = data;
+	case 0xFF42:
+		scy = data;
+	case 0xFF43:
+		scx = data;
+	case 0xFF45:
+		lyc = data;
+	case 0xFF46:
+		oam_dma = data;
+	case 0xFF47:
+		bgp = data;
+	case 0xFF48:
+		obp0 = data;
+	case 0xFF49:
+		obp1 = data;
+	case 0xFF4A:
+		wy = data;
+	case 0xFF4B:
+		wx = data;
+	}
 }
 
 void PPU::PixelFetcher::tick(u8 dots)
