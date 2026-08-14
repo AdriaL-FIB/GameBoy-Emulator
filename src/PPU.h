@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include <array>
+#include <queue>
 
 struct LCDC {
 	u8 value;
@@ -62,14 +63,64 @@ struct Object {
 	u8 flags;
 };
 
+struct FIFOPixel {
+	u8 color;
+	u8 palette;
+	bool bg_prority;
+};
+
 constexpr int SCANLINE_DOTS = 456;
 constexpr int OAM_BASE_ADDR = 0xFE00;
+constexpr int TILE_DATA_BASE_ADDR = 0x8000;
+constexpr int TILE_DATA_BASE_ADDR2 = 0x9000;
+constexpr int TILE_ROW_SIZE = 2;
+constexpr int TILE_SIZE = 16;
+constexpr int TILE_MAP_1_BASE_ADDR = 0x9800;
+constexpr int TILE_MAP_2_BASE_ADDR = 0x9C00;
 
 class PPU
 {
 private:
+
+	class PixelFetcher
+	{
+	private:
+		enum FetcherState
+		{
+			GET_TILE,
+			GET_TILE_DATA_LOW,
+			GET_TILE_DATA_HIGH,
+			PUSH
+		};
+
+	private:
+		PPU& ppu;
+		int x = 0;
+		//int y = 0;
+
+		int window_tile_x = 0;
+
+		// current state:
+		FetcherState state{GET_TILE};
+		int current_dots = 0;
+		int tile_id = 0;
+		int row_tile = 0;
+		u16 tile_addr = 0;
+		u8 tile_data_low = 0;
+		u8 tile_data_high = 0;
+
+	public:
+		PixelFetcher(PPU& ppu) : ppu(ppu) {};
+
+		void tick(u8 dots);
+		void reset();
+		void try_push();
+	};
+
+
+private:
 	std::array<u8, 6 * 1024> tile_data; // VRAM $8000-$97FF. 8x8 tiles
-	std::array<u8, 2 * 1024> tile_maps; // 2 tile maps of 32x32 tiles
+	std::array<u8, 2 * 1024> tile_maps; // VRAM $9800-$9FFF 2 tile maps of 32x32 tiles
 
 	std::array<u8, 40 * 4> oam; // Object Attribute Memory (OAM) $FE00-FE9F
 
@@ -95,7 +146,19 @@ private:
 	bool oam_scan_performed = false;
 
 	int selected_objects_count = 0;
-	std::array<u8, 10> selected_objects;
+	std::array<u8, 10> visible_objects;
+
+
+	// Drawing pixels
+	PixelFetcher pf;
+	std::queue<FIFOPixel> bg_fifo, obj_fifo;
+
+	// Current pixel for mode 3
+	int screen_x = 0;
+	bool window_area;
+
+	// Frame buffer
+	// std::array<u8, 144 * 160> framebuffer;
 
 private:
 	void oam_scan();

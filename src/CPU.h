@@ -158,13 +158,13 @@ private:
 	// Rotates & Shifts
 
 	// general rotation left function
-	uint8_t rotate_left(uint8_t n);
+	u8 rotate_left(u8 n);
 	// general rotation left carry function
-	uint8_t rotate_left_carry(uint8_t n);
+	u8 rotate_left_carry(u8 n);
 	// general rotation right function
-	uint8_t rotate_right(uint8_t n);
+	u8 rotate_right(u8 n);
 	// general rotation right carry function
-	uint8_t rotate_right_carry(uint8_t n);
+	u8 rotate_right_carry(u8 n);
 
 	// Rotate A left. Old bit 7 to Carry flag.
 	void RLCA(); 
