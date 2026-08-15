@@ -114,7 +114,7 @@ void Timer::tick(u8 tcycles)
 		{
 			tima = tma;
 			u8 IF = (bus->read_IF());
-			BIT_SET(IF, 2, true)
+			BIT_SET(IF, 2, true);
 			bus->write_IF(IF);
 			tima_reset = false;
 		}

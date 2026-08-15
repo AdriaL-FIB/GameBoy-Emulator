@@ -4,6 +4,8 @@
 #include <array>
 #include <queue>
 
+class Bus;
+
 struct LCDC {
 	u8 value;
 
@@ -121,6 +123,8 @@ private:
 
 
 private:
+	Bus* bus;
+
 	std::array<u8, 6 * 1024> tile_data; // VRAM $8000-$97FF. 8x8 tiles
 	std::array<u8, 2 * 1024> tile_maps; // VRAM $9800-$9FFF 2 tile maps of 32x32 tiles
 
@@ -168,6 +172,8 @@ private:
 
 	void advance_line();
 
+	void set_mode(u8 mode);
+
 	// Horizontal blank
 	u8 mode0(u8 dots);
 	// Vertical blank
@@ -178,6 +184,8 @@ private:
 	u8 mode3(u8 dots);
 public:
 	PPU();
+
+	void connect_bus(Bus* b) { bus = b; }
 
 	u8 read(u16 addr);
 	void write(u16 addr, u8 data);

@@ -1,6 +1,7 @@
 #include "PPU.h"
 #include <cassert>
 #include <iostream>
+#include "Bus.h"
 
 PPU::PPU() :
 	lcdc({ 0x91 }),
@@ -54,6 +55,34 @@ void PPU::advance_line()
 	selected_objects_count = 0;
 	oam_scan_performed = false;
 	window_area = false;
+
+	if (stat.LYC_int_select())
+	{
+		u8 IF = (bus->read_IF());
+		BIT_SET(IF, 1, true);
+		bus->write_IF(IF);
+	}
+}
+
+void PPU::set_mode(u8 mode)
+{
+	stat.set_ppu_mode(mode);
+
+	if (mode == 0 and stat.mode_0() or
+		mode == 1 and stat.mode_1() or
+		mode == 2 and stat.mode_2())
+	{
+		u8 IF = (bus->read_IF());
+		BIT_SET(IF, 1, true);
+		bus->write_IF(IF);
+	}
+
+	if (mode == 1)
+	{
+		u8 IF = (bus->read_IF());
+		BIT_SET(IF, 0, true);
+		bus->write_IF(IF);
+	}
 }
 
 u8 PPU::mode0(u8 dots)
@@ -71,11 +100,11 @@ u8 PPU::mode0(u8 dots)
 
 	if (ly >= 143)
 	{
-		stat.set_ppu_mode(1);
+		set_mode(1);
 		//std::cout << "Frame completed" << std::endl;
 	}
 	else
-		stat.set_ppu_mode(2);
+		set_mode(2);
 
 	advance_line();
 
@@ -99,7 +128,7 @@ u8 PPU::mode1(u8 dots)
 	int not_used = dots - dots_remaining;
 	scanline_progress = SCANLINE_DOTS;
 
-	stat.set_ppu_mode(2);
+	set_mode(2);
 
 	advance_line();
 
@@ -124,7 +153,7 @@ u8 PPU::mode2(u8 dots)
 
 	int not_used = dots - dots_remaining;
 	scanline_progress = 80;
-	stat.set_ppu_mode(3);
+	set_mode(3);
 
 	return not_used;
 }
@@ -168,11 +197,10 @@ u8 PPU::mode3(u8 dots)
 				screen_x++;
 			}
 
-
 			if (screen_x >= 160)
 			{
 				screen_x = 0;
-				stat.set_ppu_mode(0);
+				set_mode(0);
 				return t;
 			}
 		}

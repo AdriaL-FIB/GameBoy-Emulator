@@ -7,6 +7,7 @@ GameBoy::GameBoy() :
 {
 	cpu.connect_bus(&bus);
 	timer.connect_bus(&bus);
+	ppu.connect_bus(&bus);
 }
 
 void GameBoy::load_rom(const std::string& path)
