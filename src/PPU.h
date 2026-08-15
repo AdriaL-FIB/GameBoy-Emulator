@@ -65,6 +65,11 @@ struct Object {
 	u8 x;
 	u8 tile_idx;
 	u8 flags;
+
+	bool priority() const { return CHECK_BIT(flags, 7); }
+	bool flip_y() const { return CHECK_BIT(flags, 6); }
+	bool flip_x() const { return CHECK_BIT(flags, 5); }
+	bool palette() const { return CHECK_BIT(flags, 4); }
 };
 
 struct FIFOPixel {
@@ -113,12 +118,17 @@ private:
 		u8 tile_data_low = 0;
 		u8 tile_data_high = 0;
 
+		bool _fetching_obj = false;
+		Object* current_obj = nullptr;
+
 	public:
 		PixelFetcher(PPU& ppu) : ppu(ppu) {};
 
 		void tick(u8 dots);
-		void reset();
+		void reset(bool obj = false);
 		void try_push();
+
+		bool fetching_obj() const { return _fetching_obj; }
 	};
 
 
@@ -152,12 +162,14 @@ private:
 	bool oam_scan_performed = false;
 
 	int selected_objects_count = 0;
+	int next_object = 0;
 	std::array<u8, 10> visible_objects;
 
 
 	// Drawing pixels
 	PixelFetcher pf;
-	std::queue<FIFOPixel> bg_fifo, obj_fifo;
+	std::queue<FIFOPixel> bg_fifo;
+	std::deque<FIFOPixel> obj_fifo;
 
 	// Current pixel for mode 3
 	int screen_x = 0;

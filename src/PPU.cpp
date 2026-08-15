@@ -2,6 +2,7 @@
 #include <cassert>
 #include <iostream>
 #include "Bus.h"
+#include <algorithm>
 
 PPU::PPU() :
 	lcdc({ 0x91 }),
@@ -44,6 +45,18 @@ void PPU::oam_scan()
 		}
 
 	}
+
+	std::stable_sort(visible_objects.begin(), visible_objects.end(), [this](u8 a, u8 b) {
+		int obj_addr_a = a * 4;
+		int obj_addr_b = b * 4;
+
+		u8 xa = oam[obj_addr_a + 1];
+		u8 xb = oam[obj_addr_b + 1];
+
+		return xa < xb;
+		});
+
+	next_object = 0;
 }
 
 void PPU::advance_line()
@@ -163,7 +176,7 @@ u8 PPU::mode3(u8 dots)
 	if (scanline_progress == 80)
 	{
 		while (not bg_fifo.empty()) bg_fifo.pop();
-		while (not obj_fifo.empty()) obj_fifo.pop();
+		while (not obj_fifo.empty()) obj_fifo.pop_front();
 		pf.reset();
 
 		pixels_to_discard = scx % 8;
@@ -185,15 +198,39 @@ u8 PPU::mode3(u8 dots)
 		pf.tick(1);
 
 
-		// FIFO push to LCD
-		if (bg_fifo.size() >= 8)
+		if (visible_objects.size() > 0)
 		{
-			FIFOPixel p = bg_fifo.front();
+			Object& obj = reinterpret_cast<Object&>(visible_objects[next_object]);
+			if (obj.x - 8 == screen_x)
+			{
+				pf.reset(true);
+				next_object++;
+			}
+		}
+
+
+		// FIFO push to LCD
+		if (bg_fifo.size() >= 8 and not pf.fetching_obj())
+		{
+			FIFOPixel p_bg = bg_fifo.front();
 			bg_fifo.pop();
 
 			if (pixels_to_discard-- <= 0)
 			{
-				framebuffer[screen_y * 160 + screen_x] = p.color;
+				u8 color = p_bg.color;
+
+				if (not obj_fifo.empty())
+				{
+					FIFOPixel p_obj = obj_fifo.front();
+					obj_fifo.pop_front();
+
+					if (p_obj.color == 0 or p_obj.bg_prority and p_bg.color != 0)
+						color = p_bg.color;
+					else
+						color = p_obj.color;
+				}
+	
+				framebuffer[screen_y * 160 + screen_x] = color;
 				screen_x++;
 			}
 
@@ -367,36 +404,57 @@ void PPU::PixelFetcher::tick(u8 dots)
 
 		if (current_dots == 2)
 		{
-			int wx = ppu.wx - 7;
-			int wy = ppu.wy;
-			int screen_x = ppu.screen_x;
-			int screen_y = ppu.ly;
-
-			bool window_tile = ppu.lcdc.window_enable() and wx <= screen_x and wy <= screen_y;
-
-			u16 base_address = TILE_MAP_1_BASE_ADDR;
-			if (ppu.lcdc.bg_tile_map() and not window_tile or ppu.lcdc.window_tile_map() and window_tile)
-				base_address = TILE_MAP_2_BASE_ADDR;
-
-			int tile_x, tile_y;
-			if (window_tile)
+			if (_fetching_obj)
 			{
-				tile_x = window_tile_x;
-				tile_y = (screen_y - wy) / 8;
-				row_tile = (screen_y - wy) % 8;
-				window_tile_x++;
+				int screen_x = ppu.screen_x;
+				int screen_y = ppu.ly;
+
+				int obj_idx = ppu.visible_objects[ppu.next_object];
+				current_obj = reinterpret_cast<Object*>(&ppu.oam[obj_idx]);
+
+				tile_id = current_obj->tile_idx & 0xFE;
+
+
+				row_tile = screen_y - (current_obj->y - 16);
+				if (current_obj->flip_y())
+				{
+					// row_tile [0, obj_size - 1]
+					int obj_size = 8 + 8 * ppu.lcdc.obj_size();
+					row_tile = obj_size - row_tile;
+				}
+				assert(screen_x == current_obj->x - 8);
 			}
 			else
 			{
-				int pixel_y = (ppu.scy + screen_y) & 0xFF;
-				tile_x = (ppu.scx / 8 + x) & 0x1F;
-				tile_y = pixel_y / 8;
-				row_tile = pixel_y % 8;
+				int wx = ppu.wx - 7;
+				int wy = ppu.wy;
+				int screen_y = ppu.ly;
+
+				bool window_tile = ppu.window_area;
+
+				u16 base_address = TILE_MAP_1_BASE_ADDR;
+				if (ppu.lcdc.bg_tile_map() and not window_tile or ppu.lcdc.window_tile_map() and window_tile)
+					base_address = TILE_MAP_2_BASE_ADDR;
+
+				int tile_x, tile_y;
+				if (window_tile)
+				{
+					tile_x = window_tile_x;
+					tile_y = (screen_y - wy) / 8;
+					row_tile = (screen_y - wy) % 8;
+					window_tile_x++;
+				}
+				else
+				{
+					int pixel_y = (ppu.scy + screen_y) & 0xFF;
+					tile_x = (ppu.scx / 8 + x) & 0x1F;
+					tile_y = pixel_y / 8;
+					row_tile = pixel_y % 8;
+				}
+
+				tile_id = ppu.tile_maps[base_address + tile_y * 32 + tile_x - TILE_MAP_1_BASE_ADDR];
+				x++;
 			}
-
-			tile_id = ppu.tile_maps[base_address + tile_y * 32 + tile_x - TILE_MAP_1_BASE_ADDR];
-
-			x++;
 			
 			state = FetcherState::GET_TILE_DATA_LOW;
 			current_dots = 0;
@@ -447,25 +505,54 @@ void PPU::PixelFetcher::tick(u8 dots)
 	}
 }
 
-void PPU::PixelFetcher::reset()
+void PPU::PixelFetcher::reset(bool obj /*= false*/)
 {
 	window_tile_x = 0;
 	x = 0;
 	state = FetcherState::GET_TILE;
 	current_dots = 0;
+	_fetching_obj = obj;
 }
 
 void PPU::PixelFetcher::try_push()
 {
-	if (ppu.bg_fifo.size() > 8) return;
-	
-	for (int i = 7; i >= 0; --i)
+	if (_fetching_obj)
 	{
-		FIFOPixel p{};
-		p.color = CHECK_BIT(tile_data_high, i) << 1 | CHECK_BIT(tile_data_low, i);
-		p.bg_prority = false;
-		p.palette = 0;
-		ppu.bg_fifo.push(p);
+		const bool flip_x = current_obj->flip_x();
+		const bool priority = current_obj->priority();
+		const bool palette = current_obj->palette();
+
+		for (int i = 0; i < 8; ++i)
+		{
+			int b = flip_x ? i : 7 - i;
+
+			FIFOPixel p{};
+			p.color = CHECK_BIT(tile_data_high, b) << 1 | CHECK_BIT(tile_data_low, b);
+			p.bg_prority = current_obj->priority();
+			p.palette = current_obj->palette();
+
+			if (i < ppu.obj_fifo.size() and ppu.obj_fifo[i].color == 0x00 /* Transparent */)
+			{
+				ppu.obj_fifo[i] = p;
+			}
+			else
+				ppu.obj_fifo.push_back(p);
+		}
+
+		_fetching_obj = false;
+	}
+	else
+	{
+		if (ppu.bg_fifo.size() > 8) return;
+	
+		for (int i = 7; i >= 0; --i)
+		{
+			FIFOPixel p{};
+			p.color = CHECK_BIT(tile_data_high, i) << 1 | CHECK_BIT(tile_data_low, i);
+			p.bg_prority = false;
+			p.palette = 0;
+			ppu.bg_fifo.push(p);
+		}
 	}
 
 	state = FetcherState::GET_TILE;

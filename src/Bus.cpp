@@ -39,7 +39,8 @@ void Bus::handle_IO_write(u16 addr, u8 data)
 	if (addr == 0xFF02)
 	{
 		sc = data;
-		std::cout << sb;
+		//std::cout << sb;
+		return;
 	}
 
 

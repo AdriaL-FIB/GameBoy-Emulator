@@ -15,7 +15,7 @@ static SDL_Texture* texture = nullptr;
 
 GameBoy gb;
 
-Uint32 colors[]{ 0xFF000000, 0xFF444444, 0xFF888888, 0xFFFFFFFF };
+Uint32 colors[]{ 0x00FFFFFF, 0x00888888, 0x00444444, 0x00000000 };
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
@@ -40,6 +40,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 	SDL_SetRenderLogicalPresentation(renderer, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
 	texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, WINDOW_WIDTH, WINDOW_HEIGHT);
+    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
 	if (!texture) {
 		SDL_Log("Couldn't create streaming texture: %s", SDL_GetError());
 		return SDL_APP_FAILURE;
