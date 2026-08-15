@@ -1,5 +1,6 @@
 #include "PPU.h"
 #include <cassert>
+#include <iostream>
 
 PPU::PPU() :
 	lcdc({ 0x91 }),
@@ -52,6 +53,7 @@ void PPU::advance_line()
 	ly = (ly + 1) % 154;
 	selected_objects_count = 0;
 	oam_scan_performed = false;
+	window_area = false;
 }
 
 u8 PPU::mode0(u8 dots)
@@ -68,7 +70,10 @@ u8 PPU::mode0(u8 dots)
 	scanline_progress = SCANLINE_DOTS;
 
 	if (ly >= 143)
+	{
 		stat.set_ppu_mode(1);
+		//std::cout << "Frame completed" << std::endl;
+	}
 	else
 		stat.set_ppu_mode(2);
 
@@ -126,11 +131,13 @@ u8 PPU::mode2(u8 dots)
 
 u8 PPU::mode3(u8 dots)
 {
-	if (scanline_progress == 0)
+	if (scanline_progress == 80)
 	{
 		while (not bg_fifo.empty()) bg_fifo.pop();
 		while (not obj_fifo.empty()) obj_fifo.pop();
 		pf.reset();
+
+		pixels_to_discard = scx % 8;
 	}
 
 	for (int t = dots - 1; t >= 0; --t)
@@ -141,6 +148,7 @@ u8 PPU::mode3(u8 dots)
 		{
 			pf.reset();
 			while (not bg_fifo.empty()) bg_fifo.pop();
+			window_area = true;
 		}
 
 
@@ -154,7 +162,13 @@ u8 PPU::mode3(u8 dots)
 			FIFOPixel p = bg_fifo.front();
 			bg_fifo.pop();
 
-			screen_x++;
+			if (pixels_to_discard-- <= 0)
+			{
+				framebuffer[screen_y * 160 + screen_x] = p.color;
+				screen_x++;
+			}
+
+
 			if (screen_x >= 160)
 			{
 				screen_x = 0;
@@ -171,6 +185,8 @@ u8 PPU::mode3(u8 dots)
 void PPU::tick(u8 tcycles)
 {
 	// 1 dot = 1 tcycle
+
+	if (not lcdc.lcd_enable()) return;
 
 	u8 mode = stat.ppu_mode();
 
@@ -201,7 +217,7 @@ void PPU::tick(u8 tcycles)
 
 u8 PPU::read(u16 addr)
 {
-	u8 ppu_mode = stat.ppu_mode();
+	u8 ppu_mode = stat.ppu_mode() * lcdc.lcd_enable();
 
 	if (ppu_mode <= 2) // If in mode 3, VRAM is locked
 	{
@@ -248,18 +264,27 @@ u8 PPU::read(u16 addr)
 
 void PPU::write(u16 addr, u8 data)
 {
-	u8 ppu_mode = stat.ppu_mode();
+	u8 ppu_mode = stat.ppu_mode() * lcdc.lcd_enable();
 	if (ppu_mode <= 2) // If in mode 3, VRAM is locked
 	{
 		if (addr <= 0x97FF)
+		{
 			tile_data[addr - 0x8000] = data;
+			return;
+		}
+			
 
 		if (addr <= 0x9FFF)
+		{
 			tile_maps[addr - 0x9800] = data;
+			return;
+		}
 
 
 		if (addr <= 0xFE9F and ppu_mode <= 1) // If in mode 3 or 2, Sprite Attrib Memory (OAM) is locked
+		{
 			oam[addr - 0xFE00] = data;
+		}
 	}
 
 
@@ -268,26 +293,37 @@ void PPU::write(u16 addr, u8 data)
 	{
 	case 0xFF40:
 		lcdc.value = data;
+		break;
 	case 0xFF41:
-		stat.value = data;
+		stat.set(data);
+		break;
 	case 0xFF42:
 		scy = data;
+		break;
 	case 0xFF43:
 		scx = data;
+		break;
 	case 0xFF45:
 		lyc = data;
+		break;
 	case 0xFF46:
 		oam_dma = data;
+		break;
 	case 0xFF47:
 		bgp = data;
+		break;
 	case 0xFF48:
 		obp0 = data;
+		break;
 	case 0xFF49:
 		obp1 = data;
+		break;
 	case 0xFF4A:
 		wy = data;
+		break;
 	case 0xFF4B:
 		wx = data;
+		break;
 	}
 }
 
@@ -320,6 +356,7 @@ void PPU::PixelFetcher::tick(u8 dots)
 				tile_x = window_tile_x;
 				tile_y = (screen_y - wy) / 8;
 				row_tile = (screen_y - wy) % 8;
+				window_tile_x++;
 			}
 			else
 			{
@@ -329,11 +366,11 @@ void PPU::PixelFetcher::tick(u8 dots)
 				row_tile = pixel_y % 8;
 			}
 
-			u8 tile_id = ppu.tile_maps[base_address + tile_y * 32 + tile_x];
+			tile_id = ppu.tile_maps[base_address + tile_y * 32 + tile_x - TILE_MAP_1_BASE_ADDR];
 
-			window_tile_x++;
+			x++;
 			
-			state = FetcherState::GET_TILE_DATA_HIGH;
+			state = FetcherState::GET_TILE_DATA_LOW;
 			current_dots = 0;
 		}
 		break;

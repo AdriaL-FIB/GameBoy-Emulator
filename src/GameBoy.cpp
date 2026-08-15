@@ -2,7 +2,8 @@
 
 GameBoy::GameBoy() :
 	bus(&cpu, &cartridge, &ppu, &timer),
-	running(false)
+	running(false),
+	freq(4194394)
 {
 	cpu.connect_bus(&bus);
 	timer.connect_bus(&bus);
@@ -27,4 +28,13 @@ void GameBoy::game_loop()
 		timer.tick(cycles);
 		ppu.tick(cycles);
 	}
+}
+
+unsigned int GameBoy::tick()
+{
+	u8 cycles = cpu.step_instruction();
+	timer.tick(cycles);
+	ppu.tick(cycles);
+
+	return cycles;
 }

@@ -7,6 +7,9 @@
 *.pdf
 *.md
 *.gb
+*.zip
+
+!libs/**/*.txt
 
 # User-specific files
 *.rsuser

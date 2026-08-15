@@ -37,6 +37,8 @@ struct LCDC {
 struct LCDStatus {
 	u8 value;
 
+	void set(u8 v) { value = (v & (u8)~0x7) | value & 0x07; } // Bits 2,1,0 read-only
+
 	bool LYC_int_select() const { return CHECK_BIT(value, 6); }
 	void set_LYC_int_select(bool enabled) { BIT_SET(value, 6, enabled); }
 
@@ -155,10 +157,11 @@ private:
 
 	// Current pixel for mode 3
 	int screen_x = 0;
-	bool window_area;
+	bool window_area = false;
+	int pixels_to_discard = 0;
 
 	// Frame buffer
-	// std::array<u8, 144 * 160> framebuffer;
+	std::array<u8, 144 * 160> framebuffer;
 
 private:
 	void oam_scan();
@@ -182,5 +185,7 @@ public:
 	void tick(u8 tcycles);
 
 	bool dma_active() { return false; }
+
+	const std::array<u8, 144 * 160>& get_framebuffer() const { return framebuffer; }
 };
 

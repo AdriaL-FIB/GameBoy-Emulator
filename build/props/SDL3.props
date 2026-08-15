@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <SDL3Root>$(MSBuildThisFileDirectory)..\..\libs\SDL3\</SDL3Root>
+    <SDL3Architecture Condition="'$(Platform)' == 'x64'">x64</SDL3Architecture>
+    <SDL3Architecture Condition="'$(Platform)' == 'Win32'">x86</SDL3Architecture>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SDL3Root)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(SDL3Root)lib\$(SDL3Architecture);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <Target Name="CopySDL3Runtime" AfterTargets="Build" Condition="'$(SDL3Architecture)' != ''">
+    <Copy SourceFiles="$(SDL3Root)lib\$(SDL3Architecture)\SDL3.dll"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+</Project>
