@@ -18,7 +18,7 @@ Uint32 colors[]{ 0x00FFFFFF, 0x00888888, 0x00444444, 0x00000000 };
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 {
 
-	gb.load_rom("ROMs\\tetris.gb");
+	//gb.load_rom("ROMs\\tetris.gb");
 
 	//gb.game_loop();
 
@@ -42,6 +42,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 		SDL_Log("Couldn't create streaming texture: %s", SDL_GetError());
 		return SDL_APP_FAILURE;
 	}
+
+	SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, "60");
 
 	return SDL_APP_CONTINUE;  /* carry on with the program! */
 }
@@ -117,6 +119,13 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
     else if (event->type == SDL_EVENT_QUIT) {
         return SDL_APP_SUCCESS;  /* end the program, reporting success to the OS. */
     }
+	else if (event->type == SDL_EVENT_DROP_FILE)
+	{
+		if (not gb.load_rom(event->drop.data))
+		{
+			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error loading ROM", "This ROM is not currently supported", window);
+		}
+	}
     return SDL_APP_CONTINUE;  /* carry on with the program! */
 }
 
@@ -130,6 +139,8 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
     uint32_t delta_time_ms = uint32_t(now - last_time);
     last_time = now;
+
+	if (not gb.game_loaded()) return SDL_APP_CONTINUE;
 
     budget += int(delta_time_ms / 1000.0f * gb.get_freq());
 

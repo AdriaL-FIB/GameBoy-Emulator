@@ -20,14 +20,15 @@ private:
 	Timer timer;
 	Joypad joypad;
 
-	bool running;
+	bool cartridge_loaded;
 
 	u32 freq;
 
 public:
 	GameBoy();
 
-	void load_rom(const std::string& path);
+	bool load_rom(const std::string& path);
+	bool game_loaded() const { return cartridge_loaded; }
 
 	void game_loop();
 
