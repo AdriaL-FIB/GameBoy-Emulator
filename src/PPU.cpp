@@ -22,6 +22,21 @@ PPU::PPU() :
 }
 
 
+void PPU::dma_transfer(int mcycles)
+{
+	for (int i = 0; i < mcycles; ++i)
+	{
+		oam[dma_transfer_progress] = bus->dma_read(dma_transfer_start_addr + dma_transfer_progress);
+		dma_transfer_progress++;
+
+		if (dma_transfer_progress >= 160)
+		{
+			dma_transfer_progress = -1;
+			return;
+		}
+	}
+}
+
 void PPU::oam_scan()
 {
 	bool big_obj = lcdc.obj_size();
@@ -46,7 +61,7 @@ void PPU::oam_scan()
 
 	}
 
-	std::stable_sort(visible_objects.begin(), visible_objects.end(), [this](u8 a, u8 b) {
+	std::stable_sort(visible_objects.begin(), visible_objects.begin() + selected_objects_count, [this](u8 a, u8 b) {
 		int obj_addr_a = a * 4;
 		int obj_addr_b = b * 4;
 
@@ -68,6 +83,7 @@ void PPU::advance_line()
 	selected_objects_count = 0;
 	oam_scan_performed = false;
 	window_area = false;
+	another_obj_same_x = false;
 
 	if (stat.LYC_int_select())
 	{
@@ -96,6 +112,12 @@ void PPU::set_mode(u8 mode)
 		BIT_SET(IF, 0, true);
 		bus->write_IF(IF);
 	}
+}
+
+u8 PPU::get_palette_color(u8 palette, u8 id)
+{
+	u8 mask = 0b11 << id * 2;
+	return (palette & mask) >> id * 2;
 }
 
 u8 PPU::mode0(u8 dots)
@@ -193,41 +215,47 @@ u8 PPU::mode3(u8 dots)
 			window_area = true;
 		}
 
+		if (not pf.fetching_obj() and selected_objects_count > 0 and lcdc.obj_enable() and next_object < selected_objects_count)
+		{
+			another_obj_same_x = false;
+
+			int obj_idx = visible_objects[next_object] * 4;
+			Object& obj = reinterpret_cast<Object&>(oam[obj_idx]);
+			if (obj.x - 8 == screen_x)
+			{
+				pf.reset(true);
+
+				if (next_object + 1 < selected_objects_count)
+				{
+					Object& next_obj = reinterpret_cast<Object&>(oam[visible_objects[next_object + 1] * 4]);
+					if (next_obj.x - 8 == screen_x)
+					{
+						another_obj_same_x = true;
+					}
+				}
+			}
+		}
 
 		// Pixel fetcher tick
 		pf.tick(1);
 
-
-		if (visible_objects.size() > 0)
-		{
-			Object& obj = reinterpret_cast<Object&>(visible_objects[next_object]);
-			if (obj.x - 8 == screen_x)
-			{
-				pf.reset(true);
-				next_object++;
-			}
-		}
-
-
 		// FIFO push to LCD
-		if (bg_fifo.size() >= 8 and not pf.fetching_obj())
+		if (bg_fifo.size() >= 8 and not pf.fetching_obj() and not another_obj_same_x)
 		{
 			FIFOPixel p_bg = bg_fifo.front();
 			bg_fifo.pop();
 
 			if (pixels_to_discard-- <= 0)
 			{
-				u8 color = p_bg.color;
+				u8 color = get_palette_color(bgp, p_bg.color);
 
 				if (not obj_fifo.empty())
 				{
 					FIFOPixel p_obj = obj_fifo.front();
 					obj_fifo.pop_front();
 
-					if (p_obj.color == 0 or p_obj.bg_prority and p_bg.color != 0)
-						color = p_bg.color;
-					else
-						color = p_obj.color;
+					if (not (p_obj.color == 0 or p_obj.bg_prority and p_bg.color != 0))
+						color = get_palette_color((p_obj.palette) ? obp1 : obp0, p_obj.color);
 				}
 	
 				framebuffer[screen_y * 160 + screen_x] = color;
@@ -249,6 +277,10 @@ u8 PPU::mode3(u8 dots)
 
 void PPU::tick(u8 tcycles)
 {
+	if (dma_transfer_progress >= 0)
+	{
+		dma_transfer(tcycles / 4);
+	}
 	// 1 dot = 1 tcycle
 
 	if (not lcdc.lcd_enable()) return;
@@ -373,6 +405,8 @@ void PPU::write(u16 addr, u8 data)
 		break;
 	case 0xFF46:
 		oam_dma = data;
+		dma_transfer_progress = 0;
+		dma_transfer_start_addr = data << 8;
 		break;
 	case 0xFF47:
 		bgp = data;
@@ -409,18 +443,22 @@ void PPU::PixelFetcher::tick(u8 dots)
 				int screen_x = ppu.screen_x;
 				int screen_y = ppu.ly;
 
-				int obj_idx = ppu.visible_objects[ppu.next_object];
+				bool big_obj = ppu.lcdc.obj_size();
+
+				int obj_idx = ppu.visible_objects[ppu.next_object] * 4;
 				current_obj = reinterpret_cast<Object*>(&ppu.oam[obj_idx]);
 
-				tile_id = current_obj->tile_idx & 0xFE;
+				tile_id = current_obj->tile_idx;
+				if (big_obj)
+					tile_id &= 0xFE;
 
 
 				row_tile = screen_y - (current_obj->y - 16);
 				if (current_obj->flip_y())
 				{
 					// row_tile [0, obj_size - 1]
-					int obj_size = 8 + 8 * ppu.lcdc.obj_size();
-					row_tile = obj_size - row_tile;
+					int obj_size = 8 + 8 * big_obj;
+					row_tile = obj_size - row_tile - 1;
 				}
 				assert(screen_x == current_obj->x - 8);
 			}
@@ -442,7 +480,6 @@ void PPU::PixelFetcher::tick(u8 dots)
 					tile_x = window_tile_x;
 					tile_y = (screen_y - wy) / 8;
 					row_tile = (screen_y - wy) % 8;
-					window_tile_x++;
 				}
 				else
 				{
@@ -453,7 +490,6 @@ void PPU::PixelFetcher::tick(u8 dots)
 				}
 
 				tile_id = ppu.tile_maps[base_address + tile_y * 32 + tile_x - TILE_MAP_1_BASE_ADDR];
-				x++;
 			}
 			
 			state = FetcherState::GET_TILE_DATA_LOW;
@@ -468,7 +504,7 @@ void PPU::PixelFetcher::tick(u8 dots)
 
 		if (current_dots == 2)
 		{
-			if (ppu.lcdc.bg_window_addr_mode())
+			if (ppu.lcdc.bg_window_addr_mode() or _fetching_obj)
 			{
 				tile_addr = TILE_DATA_BASE_ADDR + tile_id * TILE_SIZE + row_tile * TILE_ROW_SIZE;
 			}
@@ -507,8 +543,11 @@ void PPU::PixelFetcher::tick(u8 dots)
 
 void PPU::PixelFetcher::reset(bool obj /*= false*/)
 {
-	window_tile_x = 0;
-	x = 0;
+	if (not obj)
+	{
+		window_tile_x = 0;
+		x = 0;
+	}
 	state = FetcherState::GET_TILE;
 	current_dots = 0;
 	_fetching_obj = obj;
@@ -535,11 +574,12 @@ void PPU::PixelFetcher::try_push()
 			{
 				ppu.obj_fifo[i] = p;
 			}
-			else
+			else if (i >= ppu.obj_fifo.size())
 				ppu.obj_fifo.push_back(p);
 		}
 
 		_fetching_obj = false;
+		ppu.next_object++;
 	}
 	else
 	{
@@ -553,6 +593,9 @@ void PPU::PixelFetcher::try_push()
 			p.palette = 0;
 			ppu.bg_fifo.push(p);
 		}
+		x++;
+		if (ppu.window_area)
+			window_tile_x++;
 	}
 
 	state = FetcherState::GET_TILE;

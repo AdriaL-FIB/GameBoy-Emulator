@@ -211,3 +211,20 @@ u8 Bus::read_IF()
 {
 	return IF;
 }
+
+u8 Bus::dma_read(u16 addr)
+{
+	if (addr <= 0x7FFF) // Cartridge
+		return cartridge->read(addr);
+
+	if (addr <= 0x9FFF) // PPU VRAM
+		return ppu->read(addr);
+
+	if (addr <= 0xBFFF) // Cartridge RAM, 8kB switchable RAM bank 
+		return cartridge->read(addr);
+
+	if (addr <= 0xDFFF) // WRAM (Internal RAM) (Work RAM)
+		return wram[addr - 0xC000];
+
+	return 0xFF;
+}

@@ -143,7 +143,7 @@ private:
 
 	// Registers --
 	u8 oam_dma; // FF46
-	u8 wy, wx; // FF4A–FF4B WY, WX: Window Y position, X position plus 7
+	u8 wy, wx; // FF4A - FF4B WY, WX: Window Y position, X position plus 7
 	LCDC lcdc; // FF40 - LCDC: LCD control
 
 	u8 ly; // FF44 - LY: LCD Y coordinate [read-only]
@@ -158,11 +158,15 @@ private:
 	u8 obp0, obp1; // FF48-FF49 - OBP0, OBP1 (Non-CGB Mode only): OBJ palette 0, 1 data
 
 	// ---
+	int dma_transfer_progress = -1;
+	u16 dma_transfer_start_addr = 0x0000;
+	
 	int scanline_progress = 0;
 	bool oam_scan_performed = false;
 
 	int selected_objects_count = 0;
 	int next_object = 0;
+	bool another_obj_same_x = false;
 	std::array<u8, 10> visible_objects;
 
 
@@ -180,11 +184,15 @@ private:
 	std::array<u8, 144 * 160> framebuffer;
 
 private:
+	void dma_transfer(int mcycles);
+
 	void oam_scan();
 
 	void advance_line();
 
 	void set_mode(u8 mode);
+
+	u8 get_palette_color(u8 palette, u8 id);
 
 	// Horizontal blank
 	u8 mode0(u8 dots);
@@ -204,7 +212,7 @@ public:
 
 	void tick(u8 tcycles);
 
-	bool dma_active() { return false; }
+	bool dma_active() { return dma_transfer_progress >= 0; }
 
 	const std::array<u8, 144 * 160>& get_framebuffer() const { return framebuffer; }
 };

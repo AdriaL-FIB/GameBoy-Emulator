@@ -40,5 +40,7 @@ public: // Bus read & write
 	void write_IF(u8 value);
 	u8 read_IE();
 	u8 read_IF();
+
+	u8 dma_read(u16 addr);
 };
 
