@@ -51,6 +51,9 @@
     <ClInclude Include="src\mappers\MBC1.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="src\Joypad.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\CPU.cpp">
@@ -84,6 +87,9 @@
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="src\mappers\MBC1.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Joypad.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
   </ItemGroup>

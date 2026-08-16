@@ -4,7 +4,7 @@
 #include <iostream>
 
 // https://gbdev.io/pandocs/Power_Up_Sequence.html
-Bus::Bus(CPU* cpu, Cartridge* cart, PPU* ppu, Timer* timer) :
+Bus::Bus(CPU* cpu, Cartridge* cart, PPU* ppu, Timer* timer, Joypad* joypad) :
 	wram{},
 	hram{},
 	IE(0x00),
@@ -14,6 +14,7 @@ Bus::Bus(CPU* cpu, Cartridge* cart, PPU* ppu, Timer* timer) :
 	this->cartridge = cart;
 	this->ppu = ppu;
 	this->timer = timer;
+	this->joypad = joypad;
 }
 
 Bus::~Bus() {}
@@ -25,6 +26,7 @@ void Bus::handle_IO_write(u16 addr, u8 data)
 	if (addr == 0xFF00)
 	{
 		// Joypad Input
+		joypad->write(data);
 		return;
 	}
 
@@ -134,7 +136,7 @@ void Bus::write(u16 addr, u8 data) {
 u8 Bus::handle_IO_read(u16 addr) {
 	if (addr == 0xFF00)
 		// Joypad Input
-		return 0xFF;
+		return joypad->read();
 
 	if (BETWEEN(addr, 0xFF01, 0xFF02))
 		// Serial transfer

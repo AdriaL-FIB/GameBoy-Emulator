@@ -5,11 +5,12 @@
 #include "Cartridge.h"
 #include "PPU.h"
 #include "Timer.h"
+#include "Joypad.h"
 
 class Bus
 {
 public:
-	Bus(CPU* cpu, Cartridge* cart, PPU* ppu, Timer* timer);
+	Bus(CPU* cpu, Cartridge* cart, PPU* ppu, Timer* timer, Joypad* joypad);
 	~Bus();
 
 private: // Devices on Bus
@@ -17,6 +18,7 @@ private: // Devices on Bus
 	Cartridge* cartridge;
 	PPU* ppu;
 	Timer* timer;
+	Joypad* joypad;
 
 	// Work RAM 8 KiB
 	std::array<u8, 8 * 1024> wram;

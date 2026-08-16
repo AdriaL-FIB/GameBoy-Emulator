@@ -10,9 +10,6 @@ static SDL_Window* window = nullptr;
 static SDL_Renderer* renderer = nullptr;
 static SDL_Texture* texture = nullptr;
 
-#define WINDOW_WIDTH 160
-#define WINDOW_HEIGHT 144
-
 GameBoy gb;
 
 Uint32 colors[]{ 0x00FFFFFF, 0x00888888, 0x00444444, 0x00000000 };
@@ -52,7 +49,72 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 /* This function runs when a new event (mouse input, keypresses, etc) occurs. */
 SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 {
-    if (event->type == SDL_EVENT_QUIT) {
+
+    if (event->type == SDL_EVENT_KEY_DOWN)
+    {
+        switch (event->key.key)
+        {
+        case SDLK_Z:
+            gb.button_down(BTN_A);
+            break;
+        case SDLK_X:
+            gb.button_down(BTN_B);
+            break;
+        case SDLK_RETURN:
+            gb.button_down(BTN_START);
+            break;
+        case SDLK_BACKSPACE:
+            gb.button_down(BTN_SELECT);
+			break;
+		case SDLK_RIGHT:
+            gb.button_down(DPAD_RIGHT);
+			break;
+		case SDLK_LEFT:
+            gb.button_down(DPAD_LEFT);
+			break;
+		case SDLK_UP:
+            gb.button_down(DPAD_UP);
+			break;
+		case SDLK_DOWN:
+            gb.button_down(DPAD_DOWN);
+			break;
+		default:
+            break;
+        }
+    }
+	else if (event->type == SDL_EVENT_KEY_UP)
+	{
+		switch (event->key.key)
+		{
+		case SDLK_Z:
+			gb.button_up(BTN_A);
+			break;
+		case SDLK_X:
+			gb.button_up(BTN_B);
+			break;
+		case SDLK_RETURN:
+			gb.button_up(BTN_START);
+			break;
+		case SDLK_BACKSPACE:
+			gb.button_up(BTN_SELECT);
+			break;
+		case SDLK_RIGHT:
+			gb.button_up(DPAD_RIGHT);
+			break;
+		case SDLK_LEFT:
+			gb.button_up(DPAD_LEFT);
+			break;
+		case SDLK_UP:
+			gb.button_up(DPAD_UP);
+			break;
+		case SDLK_DOWN:
+			gb.button_up(DPAD_DOWN);
+			break;
+		default:
+			break;
+		}
+	}
+    else if (event->type == SDL_EVENT_QUIT) {
         return SDL_APP_SUCCESS;  /* end the program, reporting success to the OS. */
     }
     return SDL_APP_CONTINUE;  /* carry on with the program! */

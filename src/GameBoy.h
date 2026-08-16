@@ -6,6 +6,10 @@
 #include "Cartridge.h"
 #include "Timer.h"
 
+
+#define WINDOW_WIDTH 160
+#define WINDOW_HEIGHT 144
+
 class GameBoy
 {
 private:
@@ -14,6 +18,7 @@ private:
 	PPU ppu;
 	Cartridge cartridge;
 	Timer timer;
+	Joypad joypad;
 
 	bool running;
 
@@ -28,8 +33,11 @@ public:
 
 	unsigned int tick();
 
-	const std::array<u8, 144 * 160>& get_framebuffer() const { return ppu.get_framebuffer(); }
+	const std::array<u8, WINDOW_WIDTH * WINDOW_HEIGHT>& get_framebuffer() const { return ppu.get_framebuffer(); }
 
-	u32 get_freq() { return freq; }
+	u32 get_freq() const { return freq; }
+
+	void button_down(Buttons btn);
+	void button_up(Buttons btn);
 };
 

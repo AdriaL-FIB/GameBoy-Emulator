@@ -1,7 +1,7 @@
 #include "GameBoy.h"
 
 GameBoy::GameBoy() :
-	bus(&cpu, &cartridge, &ppu, &timer),
+	bus(&cpu, &cartridge, &ppu, &timer, &joypad),
 	running(false),
 	freq(4194394)
 {
@@ -38,4 +38,14 @@ unsigned int GameBoy::tick()
 	ppu.tick(cycles);
 
 	return cycles;
+}
+
+void GameBoy::button_down(Buttons btn)
+{
+	joypad.button_down(btn);
+}
+
+void GameBoy::button_up(Buttons btn)
+{
+	joypad.button_up(btn);
 }

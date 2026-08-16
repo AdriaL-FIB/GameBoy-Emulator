@@ -25,6 +25,7 @@
     <ClInclude Include="src\CPU.h" />
     <ClInclude Include="src\GameBoy.h" />
     <ClInclude Include="src\instructions.h" />
+    <ClInclude Include="src\Joypad.h" />
     <ClInclude Include="src\mappers\Mapper.h" />
     <ClInclude Include="src\mappers\MBC1.h" />
     <ClInclude Include="src\mappers\NoMBC.h" />
@@ -38,6 +39,7 @@
     <ClCompile Include="src\CPU.cpp" />
     <ClCompile Include="src\GameBoy.cpp" />
     <ClCompile Include="src\instructions.cpp" />
+    <ClCompile Include="src\Joypad.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\mappers\Mapper.cpp" />
     <ClCompile Include="src\mappers\MBC1.cpp" />
