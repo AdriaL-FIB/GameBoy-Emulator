@@ -9,6 +9,7 @@ GameBoy::GameBoy() :
 	cpu.connect_bus(&bus);
 	timer.connect_bus(&bus);
 	ppu.connect_bus(&bus);
+	joypad.connect_bus(&bus);
 }
 
 bool GameBoy::load_rom(const std::string& path)

@@ -79,45 +79,75 @@ void PPU::advance_line()
 	assert(scanline_progress >= SCANLINE_DOTS);
 
 	scanline_progress -= SCANLINE_DOTS;
-	ly = (ly + 1) % 154;
+	set_ly((ly + 1) % 154);
 	selected_objects_count = 0;
 	oam_scan_performed = false;
 	window_area = false;
-	another_obj_same_x = false;
+	another_obj_need_fetch = false;
 
-	if (stat.LYC_int_select())
-	{
-		u8 IF = (bus->read_IF());
-		BIT_SET(IF, 1, true);
-		bus->write_IF(IF);
-	}
 }
 
 void PPU::set_mode(u8 mode)
 {
 	stat.set_ppu_mode(mode);
 
-	if (mode == 0 and stat.mode_0() or
+	bool new_stat_interrupt_line =
+		mode == 0 and stat.mode_0() or
 		mode == 1 and stat.mode_1() or
-		mode == 2 and stat.mode_2())
+		mode == 2 and stat.mode_2();
+
+	if (not stat_interrupt_line and new_stat_interrupt_line)
 	{
-		u8 IF = (bus->read_IF());
-		BIT_SET(IF, 1, true);
-		bus->write_IF(IF);
+		bus->set_IF(1, true);
 	}
+	stat_interrupt_line = new_stat_interrupt_line;
 
 	if (mode == 1)
 	{
-		u8 IF = (bus->read_IF());
-		BIT_SET(IF, 0, true);
-		bus->write_IF(IF);
+		bus->set_IF(0, true);
 	}
 }
 
-u8 PPU::get_palette_color(u8 palette, u8 id)
+void PPU::check_STAT_int()
 {
-	u8 mask = 0b11 << id * 2;
-	return (palette & mask) >> id * 2;
+	u8 mode = stat.ppu_mode();
+
+	bool new_stat_interrupt_line =
+		mode == 0 and stat.mode_0() or
+		mode == 1 and stat.mode_1() or
+		mode == 2 and stat.mode_2() or
+		ly == lyc and stat.LYC_int_select();
+
+	if (not stat_interrupt_line and new_stat_interrupt_line)
+	{
+		bus->set_IF(1, true);
+	}
+	stat_interrupt_line = new_stat_interrupt_line;
+}
+
+void PPU::set_ly(u8 value)
+{
+	ly = value;
+	check_STAT_int();
+	stat.set_LYC_eq_LY(ly == lyc);
+}
+
+void PPU::set_lyc(u8 value)
+{
+	lyc = value;
+	check_STAT_int();
+	stat.set_LYC_eq_LY(ly == lyc);
+}
+
+void PPU::turn_off()
+{
+	//set_ly
+}
+
+u8 PPU::get_palette_color(u8 palette, u8 col_id)
+{
+	u8 mask = 0b11 << col_id * 2;
+	return (palette & mask) >> col_id * 2;
 }
 
 u8 PPU::mode0(u8 dots)
@@ -133,6 +163,8 @@ u8 PPU::mode0(u8 dots)
 	int not_used = dots - dots_remaining;
 	scanline_progress = SCANLINE_DOTS;
 
+	advance_line();
+
 	if (ly >= 143)
 	{
 		set_mode(1);
@@ -141,7 +173,6 @@ u8 PPU::mode0(u8 dots)
 	else
 		set_mode(2);
 
-	advance_line();
 
 	return not_used;
 }
@@ -195,19 +226,24 @@ u8 PPU::mode2(u8 dots)
 
 u8 PPU::mode3(u8 dots)
 {
+	int screen_y = ly;
+	bool _window = lcdc.window_enable() and wx - 7 <= screen_x and wy <= screen_y;
+
+	// Only when entering mode 3: empty queues, compute pixels to discard
 	if (scanline_progress == 80)
 	{
 		while (not bg_fifo.empty()) bg_fifo.pop();
 		while (not obj_fifo.empty()) obj_fifo.pop_front();
 		pf.reset();
 
-		pixels_to_discard = scx % 8;
+		// fetcher fetches the entire tile, some pixels need to be discarded
+		// Only discard when the line does not start with window
+		pixels_to_discard = (_window) ? 0 : scx % 8;
 	}
 
 	for (int t = dots - 1; t >= 0; --t)
 	{
-		int screen_y = ly;
-		bool _window = lcdc.window_enable() and wx - 7 <= screen_x and wy <= screen_y;
+		_window = lcdc.window_enable() and wx - 7 <= screen_x and wy <= screen_y;
 		if (not window_area and _window)
 		{
 			pf.reset();
@@ -217,20 +253,20 @@ u8 PPU::mode3(u8 dots)
 
 		if (not pf.fetching_obj() and selected_objects_count > 0 and lcdc.obj_enable() and next_object < selected_objects_count)
 		{
-			another_obj_same_x = false;
+			another_obj_need_fetch = false;
 
 			int obj_idx = visible_objects[next_object] * 4;
 			Object& obj = reinterpret_cast<Object&>(oam[obj_idx]);
-			if (obj.x - 8 == screen_x)
+			if (obj.x - 8 <= screen_x)
 			{
 				pf.reset(true);
 
 				if (next_object + 1 < selected_objects_count)
 				{
 					Object& next_obj = reinterpret_cast<Object&>(oam[visible_objects[next_object + 1] * 4]);
-					if (next_obj.x - 8 == screen_x)
+					if (next_obj.x - 8 <= screen_x)
 					{
-						another_obj_same_x = true;
+						another_obj_need_fetch = true;
 					}
 				}
 			}
@@ -240,7 +276,7 @@ u8 PPU::mode3(u8 dots)
 		pf.tick(1);
 
 		// FIFO push to LCD
-		if (bg_fifo.size() >= 8 and not pf.fetching_obj() and not another_obj_same_x)
+		if (bg_fifo.size() >= 8 and not pf.fetching_obj() and not another_obj_need_fetch)
 		{
 			FIFOPixel p_bg = bg_fifo.front();
 			bg_fifo.pop();
@@ -369,7 +405,6 @@ void PPU::write(u16 addr, u8 data)
 			tile_data[addr - 0x8000] = data;
 			return;
 		}
-			
 
 		if (addr <= 0x9FFF)
 		{
@@ -377,14 +412,11 @@ void PPU::write(u16 addr, u8 data)
 			return;
 		}
 
-
 		if (addr <= 0xFE9F and ppu_mode <= 1) // If in mode 3 or 2, Sprite Attrib Memory (OAM) is locked
 		{
 			oam[addr - 0xFE00] = data;
 		}
 	}
-
-
 
 	switch (addr)
 	{
@@ -393,6 +425,7 @@ void PPU::write(u16 addr, u8 data)
 		break;
 	case 0xFF41:
 		stat.set(data);
+		check_STAT_int();
 		break;
 	case 0xFF42:
 		scy = data;
@@ -401,7 +434,7 @@ void PPU::write(u16 addr, u8 data)
 		scx = data;
 		break;
 	case 0xFF45:
-		lyc = data;
+		set_lyc(data);
 		break;
 	case 0xFF46:
 		oam_dma = data;
@@ -460,7 +493,7 @@ void PPU::PixelFetcher::tick(u8 dots)
 					int obj_size = 8 + 8 * big_obj;
 					row_tile = obj_size - row_tile - 1;
 				}
-				assert(screen_x == current_obj->x - 8);
+				//assert(screen_x == current_obj->x - 8);
 			}
 			else
 			{
@@ -468,14 +501,14 @@ void PPU::PixelFetcher::tick(u8 dots)
 				int wy = ppu.wy;
 				int screen_y = ppu.ly;
 
-				bool window_tile = ppu.window_area;
+				bool is_window_tile = ppu.window_area;
 
 				u16 base_address = TILE_MAP_1_BASE_ADDR;
-				if (ppu.lcdc.bg_tile_map() and not window_tile or ppu.lcdc.window_tile_map() and window_tile)
+				if (ppu.lcdc.bg_tile_map() and not is_window_tile or ppu.lcdc.window_tile_map() and is_window_tile)
 					base_address = TILE_MAP_2_BASE_ADDR;
 
 				int tile_x, tile_y;
-				if (window_tile)
+				if (is_window_tile)
 				{
 					tile_x = window_tile_x;
 					tile_y = (screen_y - wy) / 8;
@@ -561,7 +594,13 @@ void PPU::PixelFetcher::try_push()
 		const bool priority = current_obj->priority();
 		const bool palette = current_obj->palette();
 
-		for (int i = 0; i < 8; ++i)
+		int skipped_px = 0;
+		if (current_obj->x < 8)
+		{
+			skipped_px = 8 - current_obj->x;
+		}
+
+		for (int i = skipped_px; i < 8; ++i)
 		{
 			int b = flip_x ? i : 7 - i;
 

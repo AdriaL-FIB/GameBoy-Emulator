@@ -158,6 +158,8 @@ private:
 	u8 obp0, obp1; // FF48-FF49 - OBP0, OBP1 (Non-CGB Mode only): OBJ palette 0, 1 data
 
 	// ---
+	bool stat_interrupt_line = false;
+
 	int dma_transfer_progress = -1;
 	u16 dma_transfer_start_addr = 0x0000;
 	
@@ -166,7 +168,7 @@ private:
 
 	int selected_objects_count = 0;
 	int next_object = 0;
-	bool another_obj_same_x = false;
+	bool another_obj_need_fetch = false;
 	std::array<u8, 10> visible_objects;
 
 
@@ -191,6 +193,11 @@ private:
 	void advance_line();
 
 	void set_mode(u8 mode);
+	void check_STAT_int();
+	void set_ly(u8 value);
+	void set_lyc(u8 value);
+
+	void turn_off();
 
 	u8 get_palette_color(u8 palette, u8 id);
 

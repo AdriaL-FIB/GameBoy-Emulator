@@ -1,4 +1,5 @@
 #include "Joypad.h"
+#include "Bus.h"
 
 Joypad::Joypad() :
 	p1(0xC0),
@@ -9,16 +10,17 @@ Joypad::Joypad() :
 
 u8 Joypad::read() const
 {
+	u8 lower_nibble = 0xF;
 	if (not CHECK_BIT(p1, 4))
 	{
-		return p1 | dpad & 0x0F;
+		lower_nibble &= dpad;
 	}
 	if (not CHECK_BIT(p1, 5))
 	{
-		return p1 | buttons & 0x0F;
+		lower_nibble &= buttons;
 	}
 
-	return p1 | 0xF;
+	return p1 | lower_nibble;
 }
 
 void Joypad::write(u8 data)
@@ -28,6 +30,8 @@ void Joypad::write(u8 data)
 
 void Joypad::button_down(Buttons btn)
 {
+	u8 old_lines = read() & 0xF;
+
 	switch (btn)
 	{
 	case DPAD_RIGHT:
@@ -56,6 +60,14 @@ void Joypad::button_down(Buttons btn)
 		break;
 	default:
 		break;
+	}
+
+	u8 new_lines = read() & 0xF;
+
+	// 1 --> 0
+	if (old_lines & ~new_lines)
+	{
+		bus->set_IF(4, true);
 	}
 }
 

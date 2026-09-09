@@ -214,6 +214,11 @@ u8 Bus::read_IF()
 	return IF;
 }
 
+void Bus::set_IF(unsigned int bit, bool on)
+{
+	BIT_SET(IF, bit, on);
+}
+
 u8 Bus::dma_read(u16 addr)
 {
 	if (addr <= 0x7FFF) // Cartridge

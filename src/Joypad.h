@@ -2,6 +2,8 @@
 
 #include "common.h"
 
+class Bus;
+
 enum Buttons
 {
 	DPAD_RIGHT,
@@ -23,8 +25,13 @@ private:
 	u8 dpad;
 	u8 buttons;
 
+	Bus* bus;
+
 public:
 	Joypad();
+
+	void connect_bus(Bus* b) { bus = b; }
+
 
 	u8 read() const;
 	void write(u8 data);
