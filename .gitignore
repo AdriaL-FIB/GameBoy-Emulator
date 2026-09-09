@@ -10,7 +10,6 @@
 *.zip
 *.sa*
 
-!libs/**/*.txt
 !docs/**/*
 
 # User-specific files
@@ -373,3 +372,5 @@ MigrationBackup/
 FodyWeavers.xsd
 resource.h
 GameBoyEmulator.rc
+
+!libs/**/*
