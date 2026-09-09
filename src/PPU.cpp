@@ -165,7 +165,7 @@ u8 PPU::mode0(u8 dots)
 
 	advance_line();
 
-	if (ly >= 143)
+	if (ly > 143)
 	{
 		set_mode(1);
 		//std::cout << "Frame completed" << std::endl;
