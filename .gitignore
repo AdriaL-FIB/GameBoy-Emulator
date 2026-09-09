@@ -11,6 +11,7 @@
 *.sa*
 
 !libs/**/*.txt
+!docs/**/*
 
 # User-specific files
 *.rsuser
