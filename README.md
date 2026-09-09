@@ -43,7 +43,7 @@ Currently supported cartridge types:
 
 ## Future work
 
-- Add support for more cartridge types.
+- Add support for more cartridge types, battery and timer.
 - Implement audio.
 - Implement the `STOP` instruction.
 - Extend the emulator to support Game Boy Color.

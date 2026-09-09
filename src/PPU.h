@@ -183,7 +183,9 @@ private:
 	int pixels_to_discard = 0;
 
 	// Frame buffer
-	std::array<u8, 144 * 160> framebuffer;
+	std::array<u8, 144 * 160> framebuffer, framebuffer2;
+	std::array<u8, 144 * 160>* back_buffer = &framebuffer;
+	std::array<u8, 144 * 160>* front_buffer = &framebuffer2;
 
 private:
 	void dma_transfer(int mcycles);
@@ -221,6 +223,6 @@ public:
 
 	bool dma_active() { return dma_transfer_progress >= 0; }
 
-	const std::array<u8, 144 * 160>& get_framebuffer() const { return framebuffer; }
+	const std::array<u8, 144 * 160>& get_framebuffer() const { return *front_buffer; }
 };
 

@@ -152,6 +152,7 @@ u8 PPU::get_palette_color(u8 palette, u8 col_id)
 
 u8 PPU::mode0(u8 dots)
 {
+	assert(stat.ppu_mode() == 0);
 	int dots_remaining = SCANLINE_DOTS - scanline_progress;
 
 	if (dots < dots_remaining)
@@ -169,6 +170,12 @@ u8 PPU::mode0(u8 dots)
 	{
 		set_mode(1);
 		//std::cout << "Frame completed" << std::endl;
+
+		// swap buffers
+		std::array<u8, 144 * 160>* aux = back_buffer;
+		back_buffer = front_buffer;
+		front_buffer = aux;
+
 	}
 	else
 		set_mode(2);
@@ -179,6 +186,7 @@ u8 PPU::mode0(u8 dots)
 
 u8 PPU::mode1(u8 dots)
 {
+	assert(stat.ppu_mode() == 1);
 	int dots_remaining = SCANLINE_DOTS - scanline_progress;
 
 	if (dots < dots_remaining or ly < 153)
@@ -203,6 +211,7 @@ u8 PPU::mode1(u8 dots)
 
 u8 PPU::mode2(u8 dots)
 {
+	assert(stat.ppu_mode() == 2);
 	if (not oam_scan_performed)
 	{
 		oam_scan();
@@ -226,6 +235,7 @@ u8 PPU::mode2(u8 dots)
 
 u8 PPU::mode3(u8 dots)
 {
+	assert(stat.ppu_mode() == 3);
 	int screen_y = ly;
 	bool _window = lcdc.window_enable() and wx - 7 <= screen_x and wy <= screen_y;
 
@@ -294,7 +304,7 @@ u8 PPU::mode3(u8 dots)
 						color = get_palette_color((p_obj.palette) ? obp1 : obp0, p_obj.color);
 				}
 	
-				framebuffer[screen_y * 160 + screen_x] = color;
+				(*back_buffer)[screen_y * 160 + screen_x] = color;
 				screen_x++;
 			}
 

@@ -22,6 +22,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 
 	//gb.game_loop();
 
+	SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, "60");
+	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
 	SDL_SetAppMetadata("GameBoy Emulator", "1.0", "gameboy.emulator");
 
@@ -42,8 +44,6 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 		SDL_Log("Couldn't create streaming texture: %s", SDL_GetError());
 		return SDL_APP_FAILURE;
 	}
-
-	SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, "60");
 
 	return SDL_APP_CONTINUE;  /* carry on with the program! */
 }
