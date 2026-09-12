@@ -54,6 +54,9 @@
     <ClInclude Include="src\Joypad.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="src\APU.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\CPU.cpp">
@@ -90,6 +93,9 @@
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="src\Joypad.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\APU.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
   </ItemGroup>

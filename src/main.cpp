@@ -4,15 +4,20 @@
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
-
+#include <SDL3/SDL_audio.h>
 
 static SDL_Window* window = nullptr;
 static SDL_Renderer* renderer = nullptr;
 static SDL_Texture* texture = nullptr;
 
+#define AUDIO_FREQ 16000
+#define AUDIO_SAMPLES_BUFF_SIZE 512
+
 GameBoy gb;
 
 Uint32 colors[]{ 0x00FFFFFF, 0x00888888, 0x00444444, 0x00000000 };
+
+static SDL_AudioStream* stream = nullptr;
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
@@ -27,10 +32,24 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 
 	SDL_SetAppMetadata("GameBoy Emulator", "1.0", "gameboy.emulator");
 
-	if (!SDL_Init(SDL_INIT_VIDEO)) {
+	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
 		SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
 		return SDL_APP_FAILURE;
 	}
+
+	SDL_AudioSpec spec;
+	spec.channels = 2;
+	spec.format = SDL_AUDIO_F32;
+	spec.freq = AUDIO_FREQ;
+
+	stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, NULL, NULL);
+	if (!stream) {
+		SDL_Log("Couldn't create audio stream: %s", SDL_GetError());
+		return SDL_APP_FAILURE;
+	}
+
+	/* SDL_OpenAudioDeviceStream starts the device paused. You have to tell it to start! */
+	SDL_ResumeAudioStreamDevice(stream);
 
 	if (!SDL_CreateWindowAndRenderer("GameBoy Emulator", WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
 		SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
@@ -48,89 +67,9 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 	return SDL_APP_CONTINUE;  /* carry on with the program! */
 }
 
-/* This function runs when a new event (mouse input, keypresses, etc) occurs. */
-SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
-{
-
-    if (event->type == SDL_EVENT_KEY_DOWN)
-    {
-        switch (event->key.key)
-        {
-        case SDLK_Z:
-            gb.button_down(BTN_A);
-            break;
-        case SDLK_X:
-            gb.button_down(BTN_B);
-            break;
-        case SDLK_RETURN:
-            gb.button_down(BTN_START);
-            break;
-        case SDLK_BACKSPACE:
-            gb.button_down(BTN_SELECT);
-			break;
-		case SDLK_RIGHT:
-            gb.button_down(DPAD_RIGHT);
-			break;
-		case SDLK_LEFT:
-            gb.button_down(DPAD_LEFT);
-			break;
-		case SDLK_UP:
-            gb.button_down(DPAD_UP);
-			break;
-		case SDLK_DOWN:
-            gb.button_down(DPAD_DOWN);
-			break;
-		default:
-            break;
-        }
-    }
-	else if (event->type == SDL_EVENT_KEY_UP)
-	{
-		switch (event->key.key)
-		{
-		case SDLK_Z:
-			gb.button_up(BTN_A);
-			break;
-		case SDLK_X:
-			gb.button_up(BTN_B);
-			break;
-		case SDLK_RETURN:
-			gb.button_up(BTN_START);
-			break;
-		case SDLK_BACKSPACE:
-			gb.button_up(BTN_SELECT);
-			break;
-		case SDLK_RIGHT:
-			gb.button_up(DPAD_RIGHT);
-			break;
-		case SDLK_LEFT:
-			gb.button_up(DPAD_LEFT);
-			break;
-		case SDLK_UP:
-			gb.button_up(DPAD_UP);
-			break;
-		case SDLK_DOWN:
-			gb.button_up(DPAD_DOWN);
-			break;
-		default:
-			break;
-		}
-	}
-    else if (event->type == SDL_EVENT_QUIT) {
-        return SDL_APP_SUCCESS;  /* end the program, reporting success to the OS. */
-    }
-	else if (event->type == SDL_EVENT_DROP_FILE)
-	{
-		if (not gb.load_rom(event->drop.data))
-		{
-			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error loading ROM", "This ROM is not currently supported", window);
-		}
-	}
-    return SDL_APP_CONTINUE;  /* carry on with the program! */
-}
-
 Uint64 last_time = 0;
 int budget = 0;
+int audio_acc = 0;
 
 /* This function runs once per frame, and is the heart of the program. */
 SDL_AppResult SDL_AppIterate(void* appstate)
@@ -144,10 +83,34 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
     budget += int(delta_time_ms / 1000.0f * gb.get_freq());
 
+
+	StereoSample samples[AUDIO_SAMPLES_BUFF_SIZE];
+	int k = 0;
+
     while (budget > 0)
     {
-       budget -= int(gb.tick());
+		int ticks = int(gb.tick());
+		budget -= ticks;
+		audio_acc += ticks * AUDIO_FREQ;
+		if (audio_acc >= gb.get_freq())
+		{
+			audio_acc = 0;
+			samples[k++] = gb.get_audio();
+
+			if (k >= AUDIO_SAMPLES_BUFF_SIZE)
+			{
+				SDL_PutAudioStreamData(stream, samples, AUDIO_SAMPLES_BUFF_SIZE * sizeof(StereoSample));
+				k = 0;
+			}
+		}
     }
+
+	if (k > 0)
+	{
+		SDL_PutAudioStreamData(stream, samples, k * sizeof(StereoSample));
+	}
+
+
 
     void* pixels;
     int pitch = 0;
@@ -180,6 +143,88 @@ SDL_AppResult SDL_AppIterate(void* appstate)
     SDL_RenderPresent(renderer);  /* put it all on the screen! */
 
     return SDL_APP_CONTINUE;  /* carry on with the program! */
+}
+
+
+/* This function runs when a new event (mouse input, keypresses, etc) occurs. */
+SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
+{
+
+	if (event->type == SDL_EVENT_KEY_DOWN)
+	{
+		switch (event->key.key)
+		{
+		case SDLK_Z:
+			gb.button_down(BTN_A);
+			break;
+		case SDLK_X:
+			gb.button_down(BTN_B);
+			break;
+		case SDLK_RETURN:
+			gb.button_down(BTN_START);
+			break;
+		case SDLK_BACKSPACE:
+			gb.button_down(BTN_SELECT);
+			break;
+		case SDLK_RIGHT:
+			gb.button_down(DPAD_RIGHT);
+			break;
+		case SDLK_LEFT:
+			gb.button_down(DPAD_LEFT);
+			break;
+		case SDLK_UP:
+			gb.button_down(DPAD_UP);
+			break;
+		case SDLK_DOWN:
+			gb.button_down(DPAD_DOWN);
+			break;
+		default:
+			break;
+		}
+	}
+	else if (event->type == SDL_EVENT_KEY_UP)
+	{
+		switch (event->key.key)
+		{
+		case SDLK_Z:
+			gb.button_up(BTN_A);
+			break;
+		case SDLK_X:
+			gb.button_up(BTN_B);
+			break;
+		case SDLK_RETURN:
+			gb.button_up(BTN_START);
+			break;
+		case SDLK_BACKSPACE:
+			gb.button_up(BTN_SELECT);
+			break;
+		case SDLK_RIGHT:
+			gb.button_up(DPAD_RIGHT);
+			break;
+		case SDLK_LEFT:
+			gb.button_up(DPAD_LEFT);
+			break;
+		case SDLK_UP:
+			gb.button_up(DPAD_UP);
+			break;
+		case SDLK_DOWN:
+			gb.button_up(DPAD_DOWN);
+			break;
+		default:
+			break;
+		}
+	}
+	else if (event->type == SDL_EVENT_QUIT) {
+		return SDL_APP_SUCCESS;  /* end the program, reporting success to the OS. */
+	}
+	else if (event->type == SDL_EVENT_DROP_FILE)
+	{
+		if (not gb.load_rom(event->drop.data))
+		{
+			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error loading ROM", "This ROM is not currently supported", window);
+		}
+	}
+	return SDL_APP_CONTINUE;  /* carry on with the program! */
 }
 
 /* This function runs once at shutdown. */

@@ -4,7 +4,7 @@
 #include <iostream>
 
 // https://gbdev.io/pandocs/Power_Up_Sequence.html
-Bus::Bus(CPU* cpu, Cartridge* cart, PPU* ppu, Timer* timer, Joypad* joypad) :
+Bus::Bus(CPU* cpu, Cartridge* cart, PPU* ppu, Timer* timer, Joypad* joypad, APU* apu) :
 	wram{},
 	hram{},
 	IE(0x00),
@@ -15,6 +15,7 @@ Bus::Bus(CPU* cpu, Cartridge* cart, PPU* ppu, Timer* timer, Joypad* joypad) :
 	this->ppu = ppu;
 	this->timer = timer;
 	this->joypad = joypad;
+	this->apu = apu;
 }
 
 Bus::~Bus() {}
@@ -61,6 +62,7 @@ void Bus::handle_IO_write(u16 addr, u8 data)
 	if (BETWEEN(addr, 0xFF10, 0xFF3F))
 	{
 		// Audio registers
+		apu->write(addr, data);
 		return;
 	}
 
@@ -150,7 +152,7 @@ u8 Bus::handle_IO_read(u16 addr) {
 
 	if (BETWEEN(addr, 0xFF10, 0xFF3F))
 		// Audio registers
-		return 0xFF;
+		return apu->read(addr);
 
 	if (BETWEEN(addr, 0xFF40, 0xFF4B))
 		// LCD (PPU)

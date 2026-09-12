@@ -2,7 +2,7 @@
 #include <cassert>
 
 GameBoy::GameBoy() :
-	bus(&cpu, &cartridge, &ppu, &timer, &joypad),
+	bus(&cpu, &cartridge, &ppu, &timer, &joypad, &apu),
 	cartridge_loaded(false),
 	freq(4194304)
 {
@@ -42,6 +42,7 @@ unsigned int GameBoy::tick()
 	u8 cycles = cpu.step_instruction();
 	timer.tick(cycles);
 	ppu.tick(cycles);
+	apu.tick(cycles);
 
 	return cycles;
 }

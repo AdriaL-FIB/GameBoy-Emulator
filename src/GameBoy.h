@@ -5,6 +5,7 @@
 #include "PPU.h"
 #include "Cartridge.h"
 #include "Timer.h"
+#include "APU.h"
 
 
 #define WINDOW_WIDTH 160
@@ -19,6 +20,7 @@ private:
 	Cartridge cartridge;
 	Timer timer;
 	Joypad joypad;
+	APU apu;
 
 	bool cartridge_loaded;
 
@@ -35,6 +37,8 @@ public:
 	unsigned int tick();
 
 	const std::array<u8, WINDOW_WIDTH * WINDOW_HEIGHT>& get_framebuffer() const { return ppu.get_framebuffer(); }
+
+	const StereoSample get_audio() const { return apu.get_audio(); }
 
 	u32 get_freq() const { return freq; }
 

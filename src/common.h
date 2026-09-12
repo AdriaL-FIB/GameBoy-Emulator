@@ -13,6 +13,8 @@ typedef uint64_t u64;
 
 #define BIT_SET(a, n, on) { if (on) a |= (1 << n); else a &= ~(1 << n);}
 
+#define BITS(a, from, to) (((a) >> (to)) & ((1U << ((from) - (to) + 1)) - 1))
+
 #define BETWEEN(n, l, h) ((n >= l) && (n <= h))
 
 void delay(u32 ms);

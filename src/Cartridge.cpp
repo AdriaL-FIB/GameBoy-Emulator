@@ -45,7 +45,7 @@ bool Cartridge::load(const std::string& path)
 		return false;
 	}
 
-	u8 num_rom_banks = rom_size >> 14;
+	u8 num_rom_banks = u8(rom_size >> 14);
 
 	u8 ram_size_byte = rom.at(0x0149);
 

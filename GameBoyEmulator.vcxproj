@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\APU.h" />
     <ClInclude Include="src\Bus.h" />
     <ClInclude Include="src\Cartridge.h" />
     <ClInclude Include="src\common.h" />
@@ -34,6 +35,7 @@
     <ClInclude Include="src\Timer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\APU.cpp" />
     <ClCompile Include="src\Bus.cpp" />
     <ClCompile Include="src\Cartridge.cpp" />
     <ClCompile Include="src\CPU.cpp" />
