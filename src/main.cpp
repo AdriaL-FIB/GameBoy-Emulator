@@ -10,7 +10,7 @@ static SDL_Window* window = nullptr;
 static SDL_Renderer* renderer = nullptr;
 static SDL_Texture* texture = nullptr;
 
-#define AUDIO_FREQ 16000
+#define AUDIO_FREQ 20000
 #define AUDIO_SAMPLES_BUFF_SIZE 512
 
 GameBoy gb;
@@ -76,7 +76,7 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 {
     const Uint64 now = SDL_GetTicks();
 
-    uint32_t delta_time_ms = uint32_t(now - last_time);
+    uint32_t delta_time_ms = std::min(uint32_t(now - last_time), 100U);
     last_time = now;
 
 	if (not gb.game_loaded()) return SDL_APP_CONTINUE;
@@ -94,7 +94,7 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 		audio_acc += ticks * AUDIO_FREQ;
 		if (audio_acc >= gb.get_freq())
 		{
-			audio_acc = 0;
+			audio_acc -= gb.get_freq();
 			samples[k++] = gb.get_audio();
 
 			if (k >= AUDIO_SAMPLES_BUFF_SIZE)

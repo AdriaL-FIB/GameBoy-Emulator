@@ -28,7 +28,7 @@ struct SoundPanning // NR51
 	std::array<bool, 4> ch_left;
 	std::array<bool, 4> ch_right;
 
-	u8 read() const { return ch_right[3] << 7 | ch_right[2] << 6 | ch_right[1] << 5 | ch_right[0] << 4 | ch_right[3] << 3 | ch_right[2] << 2 | ch_right[1] << 1 | ch_right[0]; }
+	u8 read() const { return ch_left[3] << 7 | ch_left[2] << 6 | ch_left[1] << 5 | ch_left[0] << 4 | ch_right[3] << 3 | ch_right[2] << 2 | ch_right[1] << 1 | ch_right[0]; }
 	void write(u8 v)
 	{
 		ch_left[3] = v & 0x80;
@@ -112,17 +112,58 @@ struct PulseChannel
 	u8 sample() const;
 };
 
+struct WaveChannel
+{
+	bool* ch_on = nullptr;
+	WaveChannel(bool* ch_on);
+
+	// Internal
+	// 11-bit
+	u16 period_div = 0;
+
+	// 0 --> 31
+	u8 wave_pos = 1;
+
+	std::array<u8, 16> wave_ram;
+
+	// DAC enable - NR30
+	bool dac_on = false;
+	u8 read_dac() const { return dac_on << 7; }
+	void write_dac(u8 v)
+	{ 
+		dac_on = v & 0x80;
+		*ch_on = dac_on;
+	}
+
+	// Length timer - NR31
+	u8 length_timer;
+	void write_length_timer(u8 v) { length_timer = v; }
+
+	// Output level - NR32
+	u8 output_level;
+	u8 read_output_level() const { return output_level << 5; }
+	void write_output_level(u8 v) { output_level = BITS(v, 6, 5); }
+
+	// Freq low - NR33 (Read-only)
+	u16 period_value = 0x7FF;
+	void write_freq_low(u8 v) { period_value = period_value & 0x700 | v; }
+
+	// Control & Freq high - NR34
+	bool length_enable = false;
+	u8 read_control() const { return length_enable << 6; }
+	void write_control(u8 v);
+
+	void tick(u8 mcycles);
+	u8 sample() const;
+
+};
+
 class APU
 {
 private:
 	PulseChannel ch1;
 	PulseChannel ch2;
-
-	//u8 NR30;
-	//u8 NR31;
-	//u8 NR32;
-	//u8 NR33;
-	//u8 NR34;
+	WaveChannel ch3;
 
 	//u8 NR41;
 	//u8 NR42;
@@ -134,7 +175,7 @@ private:
 	AudioMasterControl NR52;
 private:
 	// [0,15] --> [1, -1]
-	float dacOutput(u8 value) const { return 1.0f - 2.0f * (value / 15.0f); } 
+	float dacOutput(u8 value, int channel) const; 
 public:
 	APU();
 
