@@ -26,6 +26,9 @@ private:
 
 	u32 freq;
 
+private:
+	void reset();
+
 public:
 	GameBoy();
 

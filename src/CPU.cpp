@@ -18,19 +18,29 @@ CPU::CPU() :
 	//BC.reg = 0x0000;
 	//DE.reg = 0x0000;
 	//HL.reg = 0x0000;
+	reset();
+}
+
+uint16_t two8b_to_16b(uint8_t h, uint16_t l) {
+	return ((uint16_t)h << 8) | l;
+}
+
+void CPU::reset()
+{
 	AF.reg = 0x01B0;
 	BC.reg = 0x0013;
 	DE.reg = 0x00D8;
 	HL.reg = 0x014D;
 	SP = 0xFFFE;
 	PC = 0x0100;
+
+	IME = false;
+	IME_scheduled = false;
+
+	halted = false;
+	halt_bug = false;
 }
 
-CPU::~CPU(){}
-
-uint16_t two8b_to_16b(uint8_t h, uint16_t l) {
-	return ((uint16_t)h << 8) | l;
-}
 
 u8 CPU::step_instruction()
 {

@@ -16,7 +16,14 @@ GameBoy::GameBoy() :
 bool GameBoy::load_rom(const std::string& path)
 {
 	cartridge_loaded = cartridge.load(path);
+	if (cartridge_loaded)
+		reset();
 	return cartridge_loaded;
+}
+
+void GameBoy::reset()
+{
+	cpu.reset();
 }
 
 void GameBoy::game_loop()

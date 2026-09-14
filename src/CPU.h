@@ -1,7 +1,5 @@
 #pragma once
 #include <cstdint>
-#include <string>
-#include <functional>
 #include "instructions.h"
 
 // http://www.codeslinger.co.uk/pages/projects/gameboy/files/GB.pdf
@@ -12,9 +10,13 @@ class CPU
 {
 public:
 	CPU();
-	~CPU();
 
 	void connect_bus(Bus* b) { bus = b; }
+
+	// returns t-cycles
+	u8 step_instruction();
+
+	void reset();
 
 private:
 	uint8_t opcode = 0x00;
@@ -223,11 +225,6 @@ private:
 	void RET(); 
 	// Pop two bytes from stack & jump to that address then enable interrupts.
 	void RETI(); 
-
-
-public:
-	// returns t-cycles
-	u8 step_instruction();
 
 private:
 	void execute_instr();
