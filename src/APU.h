@@ -15,11 +15,11 @@ struct AudioMasterControl // NR52
 	bool on; // R/W
 	std::array<bool,4> ch_on; // Read-only
 
-	u8 read() const { return on << 7 | ch_on[3] << 3 | ch_on[2] << 2 | ch_on[1] << 1 | ch_on[0]; }
+	u8 read() const { return on << 7 | ch_on[3] << 3 | ch_on[2] << 2 | ch_on[1] << 1 | ch_on[0] | 0x70; }
 	void write(u8 v) 
 	{ 
 		on = v & 0x80;
-		// clears all APU registers and makes them read-only until turned back on, except NR521. Turning the APU off, however, does not affect Wave RAM, which can always be read/written, nor the DIV-APU counter.
+		// clears all APU registers and makes them read-only until turned back on, except NR52. Turning the APU off, however, does not affect Wave RAM, which can always be read/written, nor the DIV-APU counter.
 	}
 };
 
@@ -44,12 +44,16 @@ struct SoundPanning // NR51
 
 struct MasterVolume // NR50
 {
+	bool VIN_left;
+	bool VIN_right;
 	u8 left_volume;
 	u8 right_volume;
 
-	u8 read() const { return left_volume << 4 | right_volume; }
+	u8 read() const { return VIN_left << 7 | left_volume << 4 | VIN_right << 3 | right_volume; }
 	void write(u8 v)
 	{
+		VIN_left = CHECK_BIT(v, 7);
+		VIN_right = CHECK_BIT(v, 3);
 		left_volume = (v & 0x70) >> 4;
 		right_volume = v & 0x07;
 	}
@@ -91,13 +95,13 @@ struct PulseChannel
 	bool direction = false;
 	u8 individual_step = 0;
 
-	u8 read_sweep() const { return sweep_pace << 4 | direction << 3 | individual_step; }
+	u8 read_sweep() const { return sweep_pace << 4 | direction << 3 | individual_step | 0x80; }
 	void write_sweep(u8 v);
 
 	// length and duty - NR11
 	u8 wave_duty = 0; // R/W
-	u8 initial_length_timer = 0x3F; // Read-only
-	u8 read_duty() const { return wave_duty << 6; }
+	u8 initial_length_timer = 0; // Read-only
+	u8 read_duty() const { return wave_duty << 6 | 0x3F; }
 	void write_duty_length(u8 v);
 
 	// Volume and envelope - NR12
@@ -108,13 +112,13 @@ struct PulseChannel
 	u8 read_vol() const { return init_volume << 4 | env_dir << 3 | env_pace; }
 	void write_vol(u8 v);
 
-	// Freq low - NR13 (Read-only)
+	// Freq low - NR13 (Write-only)
 	u16 period_value = 0x7FF;
 	void write_freq_low(u8 v);
 
 	// Control & Freq high - NR14
 	bool length_enable = false;
-	u8 read_control() const { return length_enable << 6; }
+	u8 read_control() const { return length_enable << 6 | 0xBF; }
 	void write_control(u8 v);
 
 	// each 4 dots
@@ -123,6 +127,8 @@ struct PulseChannel
 	void tick_sweep();
 	void tick_envelope();
 	u8 sample() const;
+
+	void reset();
 };
 
 struct WaveChannel
@@ -142,11 +148,12 @@ struct WaveChannel
 
 	// DAC enable - NR30
 	bool dac_on = false;
-	u8 read_dac() const { return dac_on << 7; }
+	u8 read_dac() const { return dac_on << 7 | 0x7F; }
 	void write_dac(u8 v)
 	{ 
 		dac_on = v & 0x80;
-		*ch_on = dac_on;
+		if (not dac_on)
+			*ch_on = false;
 	}
 
 	// Length timer - NR31
@@ -155,16 +162,16 @@ struct WaveChannel
 
 	// Output level - NR32
 	u8 output_level;
-	u8 read_output_level() const { return output_level << 5; }
+	u8 read_output_level() const { return output_level << 5 | 0x9F; }
 	void write_output_level(u8 v) { output_level = BITS(v, 6, 5); }
 
-	// Freq low - NR33 (Read-only)
+	// Freq low - NR33 (Write-only)
 	u16 period_value = 0x7FF;
 	void write_freq_low(u8 v) { period_value = period_value & 0x700 | v; }
 
 	// Control & Freq high - NR34
 	bool length_enable = false;
-	u8 read_control() const { return length_enable << 6; }
+	u8 read_control() const { return length_enable << 6 | 0xBF; }
 	void write_control(u8 v);
 
 	// each 2 dots
@@ -172,6 +179,7 @@ struct WaveChannel
 	void tick_length_timer();
 	u8 sample() const;
 
+	void reset();
 };
 
 struct NoiseChannel
@@ -191,8 +199,8 @@ struct NoiseChannel
 	u8 envelope_iterations = 0;
 
 	bool active_clock = true;
-	u8 clock_iterations = 0;
-	u8 current_clock_iterations = 0;
+	u32 clock_iterations = 2;
+	u32 current_clock_iterations = 0;
 
 
 	// Length timer - NR41
@@ -209,14 +217,14 @@ struct NoiseChannel
 
 	// frequency & randomness - NR43
 	u8 clock_shift = 0;
-	u8 LFSR_width = 0;
+	bool LFSR_width = false;
 	u8 clock_divider = 0;
 	u8 read_freq() const { return clock_shift << 4 | LFSR_width << 3 | clock_divider; }
 	void write_freq(u8 v);
 
 	// Control - NR44
 	bool length_enable = false;
-	u8 read_control() const { return length_enable << 6; }
+	u8 read_control() const { return length_enable << 6 | 0xBF; }
 	void write_control(u8 v);
 
 	// https://gbdev.io/pandocs/Audio_details.html#noise-channel-ch4
@@ -225,6 +233,7 @@ struct NoiseChannel
 	void tick_envelope();
 	u8 sample() const;
 
+	void reset();
 };
 
 class APU
@@ -242,7 +251,8 @@ private:
 	u32 div_apu = 0;
 private:
 	// [0,15] --> [1, -1]
-	float dacOutput(u8 value, int channel) const; 
+	float dacOutput(u8 value) const; 
+	void turn_off();
 public:
 	APU();
 

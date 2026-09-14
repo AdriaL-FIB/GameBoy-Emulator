@@ -44,7 +44,7 @@ void PulseChannel::write_control(u8 v)
 	length_enable = CHECK_BIT(v, 6);
 	period_value = period_value & 0xFF | (v & 0x7) << 8;
 
-	if (trigger)
+	if (trigger and dac_on)
 	{
 		// Ch1 is enabled
 		*ch_on = true;
@@ -129,6 +129,32 @@ u8 PulseChannel::sample() const
 }
 
 
+void PulseChannel::reset()
+{
+	period_div = 0;
+	duty_pos = 0;
+	current_volume = 0;
+	current_length_timer = 0;
+	sweep_iterations = 0;
+	envelope_iterations = 0;
+
+	dac_on = false;
+
+	sweep_pace = 0;
+	direction = false;
+	individual_step = 0;
+
+	wave_duty = 0;
+	initial_length_timer = 0;
+
+	init_volume = 0;
+	env_dir = false;
+	env_pace = 0;
+
+	period_value = 0;
+	length_enable = 0;
+}
+
 WaveChannel::WaveChannel(bool* ch_on) :
 	ch_on(ch_on),
 	wave_ram{}
@@ -141,7 +167,7 @@ void WaveChannel::write_control(u8 v)
 	length_enable = CHECK_BIT(v, 6);
 	period_value = period_value & 0xFF | (v & 0x7) << 8;
 
-	if (trigger)
+	if (trigger and dac_on)
 	{
 		// Ch3 is enabled
 		*ch_on = true;
@@ -203,6 +229,22 @@ u8 WaveChannel::sample() const
 	}
 }
 
+void WaveChannel::reset()
+{
+	period_div = 0;
+	current_length_timer = 0;
+	wave_pos = 1;
+	dac_on = false;
+
+	initial_length_timer = 0;
+
+	output_level = 0;
+
+	period_value = 0;
+
+	length_enable = false;
+}
+
 NoiseChannel::NoiseChannel(bool* ch_on) : ch_on(ch_on) {}
 
 void NoiseChannel::write_vol(u8 v)
@@ -249,7 +291,7 @@ void NoiseChannel::write_control(u8 v)
 	bool trigger = CHECK_BIT(v, 7);
 	length_enable = CHECK_BIT(v, 6);
 
-	if (trigger)
+	if (trigger and dac_on)
 	{
 		// Ch4 is enabled.
 		*ch_on = true;
@@ -276,7 +318,7 @@ void NoiseChannel::tick(u8 mcycles)
 {
 	if (not active_clock) return;
 	current_clock_iterations += mcycles;
-	if (current_clock_iterations >= clock_iterations)
+	while (current_clock_iterations >= clock_iterations)
 	{
 		current_clock_iterations -= clock_iterations;
 		bool b = CHECK_BIT(LFSR, 1) == CHECK_BIT(LFSR, 0);
@@ -317,10 +359,36 @@ u8 NoiseChannel::sample() const
 }
 
 
-float APU::dacOutput(u8 value, int channel) const
+void NoiseChannel::reset()
 {
-	assert(channel < 4 and channel >= 0);
-	return (1.0f - 2.0f * (value / 15.0f)) * NR52.ch_on[channel];
+	dac_on = false;
+
+	LFSR = 0;
+	current_length_timer = 0;
+	current_volume = 0;
+	envelope_iterations = 0;
+
+	active_clock = false;
+
+	clock_iterations = 2;
+	current_clock_iterations = 0;
+
+	initial_length_timer = 0;
+
+	init_volume = 0;
+	env_dir = false;
+	env_pace = 0;
+
+	clock_shift = 0;
+	LFSR_width = false;
+	clock_divider = 0;
+
+	length_enable = false;
+}
+
+float APU::dacOutput(u8 value) const
+{
+	return (1.0f - 2.0f * (value / 15.0f));
 }
 
 APU::APU() :
@@ -380,10 +448,10 @@ const StereoSample APU::get_audio() const
 	int ch3_sample = ch3.sample();
 	int ch4_sample = ch4.sample();
 
-	float ch1_dac = dacOutput(ch1_sample, 0) * NR52.ch_on[0] * ch1.dac_on;
-	float ch2_dac = dacOutput(ch2_sample, 1) * NR52.ch_on[1] * ch2.dac_on;
-	float ch3_dac = dacOutput(ch3_sample, 2) * NR52.ch_on[2] * ch3.dac_on;
-	float ch4_dac = dacOutput(ch4_sample, 3) * NR52.ch_on[3] * ch4.dac_on;
+	float ch1_dac = dacOutput(ch1_sample) * NR52.ch_on[0] * ch1.dac_on;
+	float ch2_dac = dacOutput(ch2_sample) * NR52.ch_on[1] * ch2.dac_on;
+	float ch3_dac = dacOutput(ch3_sample) * NR52.ch_on[2] * ch3.dac_on;
+	float ch4_dac = dacOutput(ch4_sample) * NR52.ch_on[3] * ch4.dac_on;
 
 
 
@@ -466,6 +534,23 @@ u8 APU::read(u16 addr)
 
 void APU::write(u16 addr, u8 data)
 {
+
+	if (addr == 0xFF26)
+	{
+		NR52.write(data);
+		if (not NR52.on)
+			turn_off();
+		return;
+	}
+	if (BETWEEN(addr, 0xFF30, 0xFF3F))
+	{
+		ch3.wave_ram[addr - 0xFF30] = data;
+		return;
+	}
+	if (not NR52.on)
+		return;
+
+
 	switch (addr)
 	{
 	case 0xFF10:
@@ -513,9 +598,6 @@ void APU::write(u16 addr, u8 data)
 	case 0xFF25:
 		NR51.write(data);
 		break;
-	case 0xFF26:
-		NR52.write(data);
-		break;
 	case 0xFF1A:
 		ch3.write_dac(data);
 		break;
@@ -531,23 +613,23 @@ void APU::write(u16 addr, u8 data)
 	case 0xFF1E:
 		ch3.write_control(data);
 		break;
-	case 0xFF30:
-	case 0xFF31:
-	case 0xFF32:
-	case 0xFF33:
-	case 0xFF34:
-	case 0xFF35:
-	case 0xFF36:
-	case 0xFF37:
-	case 0xFF38:
-	case 0xFF39:
-	case 0xFF3A:
-	case 0xFF3B:
-	case 0xFF3C:
-	case 0xFF3D:
-	case 0xFF3E:
-	case 0xFF3F:
-		ch3.wave_ram[addr - 0xFF30] = data;
-		break;
 	}
+}
+
+void APU::turn_off()
+{
+	NR52.on = false;
+	NR52.ch_on.fill(false);
+
+	NR51.ch_left.fill(false);
+	NR51.ch_right.fill(false);
+	NR50.left_volume = 0;
+	NR50.right_volume = 0;
+	NR50.VIN_left = 0;
+	NR50.VIN_right = 0;
+
+	ch1.reset();
+	ch2.reset();
+	ch3.reset();
+	ch4.reset();
 }
