@@ -57,6 +57,7 @@ void PulseChannel::write_control(u8 v)
 		period_div = period_value;
 
 		// Envelope timer is reset.
+		envelope_iterations = 0;
 
 		// Volume is set to contents of NR12 initial volume.
 		current_volume = init_volume;
@@ -91,7 +92,7 @@ void PulseChannel::tick_sweep()
 		if (sweep_iterations >= sweep_pace)
 		{
 			sweep_iterations = 0;
-			int inc = period_value / (2 << individual_step);
+			int inc = period_value / (1 << individual_step);
 
 			period_value = (direction) ? period_value - inc : period_value + inc;
 
@@ -198,6 +199,114 @@ u8 WaveChannel::sample() const
 	}
 }
 
+NoiseChannel::NoiseChannel(bool* ch_on) : ch_on(ch_on) {}
+
+void NoiseChannel::write_vol(u8 v)
+{
+	init_volume = BITS(v, 7, 4);
+	env_dir = (v >> 3) & 0x1;
+	env_pace = v & 0x7;
+
+	if (BITS(v, 7, 3) == 0)
+	{
+		*ch_on = false;
+	}
+}
+
+void NoiseChannel::write_freq(u8 v)
+{
+	clock_shift = BITS(v, 7, 4);
+	LFSR_width = CHECK_BIT(v, 3);
+	clock_divider = BITS(v, 2, 0);
+
+	if (clock_shift >= 14)
+	{
+		active_clock = false;
+	}
+	else
+	{
+		if (clock_divider > 0)
+		{
+			clock_iterations = 4 * clock_divider * (1 << clock_shift);
+		}
+		else // clock_divider == 0 --> 0.5
+		{
+			clock_iterations = 2 * (1 << clock_shift);
+		}
+	}
+}
+
+void NoiseChannel::write_control(u8 v)
+{
+	bool trigger = CHECK_BIT(v, 7);
+	length_enable = CHECK_BIT(v, 6);
+
+	if (trigger)
+	{
+		// Ch4 is enabled.
+		*ch_on = true;
+
+		// If length timer expired it is reset.
+		if (current_length_timer++ >= 64)
+		{
+			current_length_timer = initial_length_timer;
+		}
+
+		// Envelope timer is reset.
+		envelope_iterations = 0;
+
+		// Volume is set to contents of NR42 initial volume.
+		current_volume = init_volume;
+
+		// LFSR bits are reset.
+		LFSR = 0;
+	}
+}
+
+void NoiseChannel::tick(u8 mcycles)
+{
+	if (not active_clock) return;
+	current_clock_iterations += mcycles;
+	if (current_clock_iterations >= clock_iterations)
+	{
+		current_clock_iterations -= clock_iterations;
+		bool b = CHECK_BIT(LFSR, 1) == CHECK_BIT(LFSR, 0);
+		BIT_SET(LFSR, 15, b);
+		if (LFSR_width) // 7-bit mode
+			BIT_SET(LFSR, 7, b);
+
+		LFSR = LFSR >> 1;
+	}
+}
+
+void NoiseChannel::tick_length_timer()
+{
+	if (current_length_timer++ >= 64)
+	{
+		*ch_on = false;
+	}
+}
+
+void NoiseChannel::tick_envelope()
+{
+	if (env_pace == 0) return;
+
+	envelope_iterations++;
+	if (envelope_iterations >= env_pace)
+	{
+		envelope_iterations = 0;
+
+		if (current_volume == 0 and not env_dir or current_volume == 15 and env_dir) return;
+		current_volume += env_dir * 2 - 1; // [0, 1] --> [-1, 1]
+	}
+}
+
+u8 NoiseChannel::sample() const
+{
+	return current_volume * CHECK_BIT(LFSR, 0);
+}
+
+
 float APU::dacOutput(u8 value, int channel) const
 {
 	assert(channel < 4 and channel >= 0);
@@ -207,7 +316,8 @@ float APU::dacOutput(u8 value, int channel) const
 APU::APU() :
 	ch1(&NR52.ch_on[0]),
 	ch2(&NR52.ch_on[1]),
-	ch3(&NR52.ch_on[2])
+	ch3(&NR52.ch_on[2]),
+	ch4(&NR52.ch_on[3])
 {
 }
 
@@ -220,6 +330,7 @@ void APU::div_apu_event()
 	{
 		ch1.tick_envelope();
 		ch2.tick_envelope();
+		ch4.tick_envelope();
 	}
 
 	// Sound length
@@ -228,6 +339,7 @@ void APU::div_apu_event()
 		ch1.tick_length_timer();
 		ch2.tick_length_timer();
 		ch3.tick_length_timer();
+		ch4.tick_length_timer();
 	}
 
 	// CH1 freq sweep
@@ -244,6 +356,7 @@ void APU::tick(u8 tcycles)
 	ch1.tick(mcycles);
 	ch2.tick(mcycles);
 	ch3.tick(tcycles);
+	ch4.tick(mcycles);
 }
 
 const StereoSample APU::get_audio() const
@@ -255,7 +368,7 @@ const StereoSample APU::get_audio() const
 	int ch1_sample = ch1.sample();
 	int ch2_sample = ch2.sample();
 	int ch3_sample = ch3.sample();
-	int ch4_sample = 0;
+	int ch4_sample = ch4.sample();
 
 	float ch1_dac = dacOutput(ch1_sample, 0) * NR52.ch_on[0];
 	float ch2_dac = dacOutput(ch2_sample, 1) * NR52.ch_on[1];
@@ -301,6 +414,12 @@ u8 APU::read(u16 addr)
 		return ch2.read_vol();
 	case 0xFF19:
 		return ch2.read_control();
+	case 0xFF21:
+		return ch4.read_vol();
+	case 0xFF22:
+		return ch4.read_freq();
+	case 0xFF23:
+		return ch4.read_control();
 	case 0xFF24:
 		return NR50.read();
 	case 0xFF25:
@@ -365,6 +484,18 @@ void APU::write(u16 addr, u8 data)
 		break;
 	case 0xFF19:
 		ch2.write_control(data);
+		break;
+	case 0xFF20:
+		ch4.write_length_timer(data);
+		break;
+	case 0xFF21:
+		ch4.write_vol(data);
+		break;
+	case 0xFF22:
+		ch4.write_freq(data);
+		break;
+	case 0xFF23:
+		ch4.write_control(data);
 		break;
 	case 0xFF24:
 		NR50.write(data);

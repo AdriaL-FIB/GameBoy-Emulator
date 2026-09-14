@@ -114,6 +114,7 @@ struct PulseChannel
 	u8 read_control() const { return length_enable << 6; }
 	void write_control(u8 v);
 
+	// each 4 dots
 	void tick(u8 mcycles);
 	void tick_length_timer();
 	void tick_sweep();
@@ -163,8 +164,61 @@ struct WaveChannel
 	u8 read_control() const { return length_enable << 6; }
 	void write_control(u8 v);
 
+	// each 2 dots
 	void tick(u8 mcycles);
 	void tick_length_timer();
+	u8 sample() const;
+
+};
+
+struct NoiseChannel
+{
+	bool* ch_on = nullptr;
+	NoiseChannel(bool* ch_on);
+
+	// Internal
+	// 16-bit
+	u16 LFSR = 0;
+	// 8-bit 
+	u8 current_length_timer = 0;
+	// 2-bit
+	u8 current_volume = 0;
+
+	u8 envelope_iterations = 0;
+
+	bool active_clock = true;
+	u8 clock_iterations = 0;
+	u8 current_clock_iterations = 0;
+
+
+	// Length timer - NR41
+	u8 initial_length_timer;
+	void write_length_timer(u8 v) { initial_length_timer = v & 0x3F; }
+
+	// Volume and envelope - NR42
+	// Writes to this register while the channel is on require retriggering it afterwards. If the write turns the channel off, retriggering is not necessary (it would do nothing).
+	u8 init_volume = 0;
+	bool env_dir = false;
+	u8 env_pace = 0;
+	u8 read_vol() const { return init_volume << 4 | env_dir << 3 | env_pace; }
+	void write_vol(u8 v);
+
+	// frequency & randomness - NR43
+	u8 clock_shift;
+	u8 LFSR_width;
+	u8 clock_divider;
+	u8 read_freq() const { return clock_shift << 4 | LFSR_width << 3 | clock_divider; }
+	void write_freq(u8 v);
+
+	// Control - NR44
+	bool length_enable = false;
+	u8 read_control() const { return length_enable << 6; }
+	void write_control(u8 v);
+
+	// https://gbdev.io/pandocs/Audio_details.html#noise-channel-ch4
+	void tick(u8 mcycles);
+	void tick_length_timer();
+	void tick_envelope();
 	u8 sample() const;
 
 };
@@ -175,11 +229,7 @@ private:
 	PulseChannel ch1;
 	PulseChannel ch2;
 	WaveChannel ch3;
-
-	//u8 NR41;
-	//u8 NR42;
-	//u8 NR43;
-	//u8 NR44;
+	NoiseChannel ch4;
 
 	MasterVolume NR50;
 	SoundPanning NR51;
