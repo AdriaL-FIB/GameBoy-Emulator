@@ -158,7 +158,7 @@ struct WaveChannel
 
 	// Length timer - NR31
 	u8 initial_length_timer;
-	void write_length_timer(u8 v) { initial_length_timer = v; }
+	void write_length_timer(u8 v);
 
 	// Output level - NR32
 	u8 output_level;
@@ -205,7 +205,7 @@ struct NoiseChannel
 
 	// Length timer - NR41
 	u8 initial_length_timer = 0;
-	void write_length_timer(u8 v) { initial_length_timer = v & 0x3F; }
+	void write_length_timer(u8 v);
 
 	// Volume and envelope - NR42
 	// Writes to this register while the channel is on require retriggering it afterwards. If the write turns the channel off, retriggering is not necessary (it would do nothing).

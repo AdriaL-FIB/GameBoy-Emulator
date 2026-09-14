@@ -17,6 +17,7 @@ void PulseChannel::write_duty_length(u8 v)
 {
 	wave_duty = BITS(v, 7, 6);
 	initial_length_timer = v & 0x3F;
+	current_length_timer = initial_length_timer;
 }
 
 void PulseChannel::write_vol(u8 v)
@@ -50,9 +51,9 @@ void PulseChannel::write_control(u8 v)
 		*ch_on = true;
 
 		// If length timer expired it is reset.
-		if (current_length_timer++ >= 64)
+		if (current_length_timer >= 64)
 		{
-			current_length_timer = initial_length_timer;
+			current_length_timer = 0;
 		}
 
 		// The period divider is set to the contents of NR13 and NR14.
@@ -81,7 +82,7 @@ void PulseChannel::tick(u8 mcycles)
 void PulseChannel::tick_length_timer()
 {
 	if (not length_enable) return;
-	if (current_length_timer++ >= 64)
+	if (++current_length_timer >= 64)
 	{
 		*ch_on = false;
 	}
@@ -161,6 +162,12 @@ WaveChannel::WaveChannel(bool* ch_on) :
 {
 }
 
+void WaveChannel::write_length_timer(u8 v)
+{
+	initial_length_timer = v;
+	current_length_timer = v;
+}
+
 void WaveChannel::write_control(u8 v)
 {
 	bool trigger = CHECK_BIT(v, 7);
@@ -173,9 +180,9 @@ void WaveChannel::write_control(u8 v)
 		*ch_on = true;
 
 		// If length timer expired it is reset.
-		if (current_length_timer++ >= 256)
+		if (current_length_timer >= 256)
 		{
-			current_length_timer = initial_length_timer;
+			current_length_timer = 0;
 		}
 
 		// The period divider is set to the contents of NR33 and NR34.
@@ -202,7 +209,7 @@ void WaveChannel::tick(u8 tcycles)
 void WaveChannel::tick_length_timer()
 {
 	if (not length_enable) return;
-	if (current_length_timer++ >= 256)
+	if (++current_length_timer == 0) // 255 + 1 --overflow--> 0
 	{
 		*ch_on = false;
 	}
@@ -246,6 +253,12 @@ void WaveChannel::reset()
 }
 
 NoiseChannel::NoiseChannel(bool* ch_on) : ch_on(ch_on) {}
+
+void NoiseChannel::write_length_timer(u8 v)
+{
+	initial_length_timer = v & 0x3F;
+	current_length_timer = initial_length_timer;
+}
 
 void NoiseChannel::write_vol(u8 v)
 {
@@ -297,9 +310,9 @@ void NoiseChannel::write_control(u8 v)
 		*ch_on = true;
 
 		// If length timer expired it is reset.
-		if (current_length_timer++ >= 64)
+		if (current_length_timer >= 64)
 		{
-			current_length_timer = initial_length_timer;
+			current_length_timer = 0;
 		}
 
 		// Envelope timer is reset.
@@ -333,7 +346,7 @@ void NoiseChannel::tick(u8 mcycles)
 void NoiseChannel::tick_length_timer()
 {
 	if (not length_enable) return;
-	if (current_length_timer++ >= 64)
+	if (++current_length_timer >= 64)
 	{
 		*ch_on = false;
 	}
