@@ -112,9 +112,11 @@ void PulseChannel::tick_envelope()
 	if (envelope_iterations >= env_pace)
 	{
 		envelope_iterations = 0;
-		current_volume += env_dir * 2 - 1; // [0, 1] --> [-1, 1]
-	}
 
+		if (current_volume == 0 and not env_dir or current_volume == 15 and env_dir) return;
+		current_volume += env_dir * 2 - 1; // [0, 1] --> [-1, 1]
+		//std::printf("Current volume: %d\n", current_volume);
+	}
 }
 
 u8 PulseChannel::sample() const
@@ -133,7 +135,7 @@ void WaveChannel::write_control(u8 v)
 {
 	bool trigger = CHECK_BIT(v, 7);
 	length_enable = CHECK_BIT(v, 6);
-	period_value = period_value & 0xFF | v & 0x7;
+	period_value = period_value & 0xFF | (v & 0x7) << 8;
 
 	if (trigger)
 	{
