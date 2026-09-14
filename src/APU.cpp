@@ -25,7 +25,9 @@ void PulseChannel::write_vol(u8 v)
 	env_dir = (v >> 3) & 0x1;
 	env_pace = v & 0x7;
 
-	if (BITS(v, 7, 3) == 0)
+	dac_on = (v & 0xF8) != 0;
+
+	if (not dac_on)
 	{
 		*ch_on = false;
 	}
@@ -78,6 +80,7 @@ void PulseChannel::tick(u8 mcycles)
 
 void PulseChannel::tick_length_timer()
 {
+	if (not length_enable) return;
 	if (current_length_timer++ >= 64)
 	{
 		*ch_on = false;
@@ -172,6 +175,7 @@ void WaveChannel::tick(u8 tcycles)
 
 void WaveChannel::tick_length_timer()
 {
+	if (not length_enable) return;
 	if (current_length_timer++ >= 256)
 	{
 		*ch_on = false;
@@ -207,7 +211,9 @@ void NoiseChannel::write_vol(u8 v)
 	env_dir = (v >> 3) & 0x1;
 	env_pace = v & 0x7;
 
-	if (BITS(v, 7, 3) == 0)
+	dac_on = (v & 0xF8) != 0;
+
+	if (not dac_on)
 	{
 		*ch_on = false;
 	}
@@ -218,6 +224,8 @@ void NoiseChannel::write_freq(u8 v)
 	clock_shift = BITS(v, 7, 4);
 	LFSR_width = CHECK_BIT(v, 3);
 	clock_divider = BITS(v, 2, 0);
+
+	active_clock = true;
 
 	if (clock_shift >= 14)
 	{
@@ -259,6 +267,7 @@ void NoiseChannel::write_control(u8 v)
 		current_volume = init_volume;
 
 		// LFSR bits are reset.
+		current_clock_iterations = 0;
 		LFSR = 0;
 	}
 }
@@ -281,6 +290,7 @@ void NoiseChannel::tick(u8 mcycles)
 
 void NoiseChannel::tick_length_timer()
 {
+	if (not length_enable) return;
 	if (current_length_timer++ >= 64)
 	{
 		*ch_on = false;
@@ -370,10 +380,10 @@ const StereoSample APU::get_audio() const
 	int ch3_sample = ch3.sample();
 	int ch4_sample = ch4.sample();
 
-	float ch1_dac = dacOutput(ch1_sample, 0) * NR52.ch_on[0];
-	float ch2_dac = dacOutput(ch2_sample, 1) * NR52.ch_on[1];
-	float ch3_dac = dacOutput(ch3_sample, 2) * NR52.ch_on[2];
-	float ch4_dac = dacOutput(ch4_sample, 3) * NR52.ch_on[3];
+	float ch1_dac = dacOutput(ch1_sample, 0) * NR52.ch_on[0] * ch1.dac_on;
+	float ch2_dac = dacOutput(ch2_sample, 1) * NR52.ch_on[1] * ch2.dac_on;
+	float ch3_dac = dacOutput(ch3_sample, 2) * NR52.ch_on[2] * ch3.dac_on;
+	float ch4_dac = dacOutput(ch4_sample, 3) * NR52.ch_on[3] * ch4.dac_on;
 
 
 

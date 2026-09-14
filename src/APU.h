@@ -80,6 +80,9 @@ struct PulseChannel
 	u8 envelope_iterations = 0;
 
 	bool* ch_on = nullptr;
+	bool dac_on = false;
+
+
 
 	PulseChannel(bool* ch_on);
 
@@ -174,6 +177,7 @@ struct WaveChannel
 struct NoiseChannel
 {
 	bool* ch_on = nullptr;
+	bool dac_on = false;
 	NoiseChannel(bool* ch_on);
 
 	// Internal
@@ -192,7 +196,7 @@ struct NoiseChannel
 
 
 	// Length timer - NR41
-	u8 initial_length_timer;
+	u8 initial_length_timer = 0;
 	void write_length_timer(u8 v) { initial_length_timer = v & 0x3F; }
 
 	// Volume and envelope - NR42
@@ -204,9 +208,9 @@ struct NoiseChannel
 	void write_vol(u8 v);
 
 	// frequency & randomness - NR43
-	u8 clock_shift;
-	u8 LFSR_width;
-	u8 clock_divider;
+	u8 clock_shift = 0;
+	u8 LFSR_width = 0;
+	u8 clock_divider = 0;
 	u8 read_freq() const { return clock_shift << 4 | LFSR_width << 3 | clock_divider; }
 	void write_freq(u8 v);
 
