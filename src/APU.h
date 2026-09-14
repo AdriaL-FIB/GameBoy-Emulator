@@ -73,6 +73,12 @@ struct PulseChannel
 	u8 duty_pos = 0;
 	// 2-bit
 	u8 current_volume = 0;
+	// 6-bit 
+	u8 current_length_timer = 0;
+
+	u8 sweep_iterations = 0;
+	u8 envelope_iterations = 0;
+
 	bool* ch_on = nullptr;
 
 	PulseChannel(bool* ch_on);
@@ -109,6 +115,9 @@ struct PulseChannel
 	void write_control(u8 v);
 
 	void tick(u8 mcycles);
+	void tick_length_timer();
+	void tick_sweep();
+	void tick_envelope();
 	u8 sample() const;
 };
 
@@ -120,7 +129,8 @@ struct WaveChannel
 	// Internal
 	// 11-bit
 	u16 period_div = 0;
-
+	// 8-bit 
+	u8 current_length_timer = 0;
 	// 0 --> 31
 	u8 wave_pos = 1;
 
@@ -136,8 +146,8 @@ struct WaveChannel
 	}
 
 	// Length timer - NR31
-	u8 length_timer;
-	void write_length_timer(u8 v) { length_timer = v; }
+	u8 initial_length_timer;
+	void write_length_timer(u8 v) { initial_length_timer = v; }
 
 	// Output level - NR32
 	u8 output_level;
@@ -154,6 +164,7 @@ struct WaveChannel
 	void write_control(u8 v);
 
 	void tick(u8 mcycles);
+	void tick_length_timer();
 	u8 sample() const;
 
 };
@@ -173,12 +184,15 @@ private:
 	MasterVolume NR50;
 	SoundPanning NR51;
 	AudioMasterControl NR52;
+
+	u32 div_apu = 0;
 private:
 	// [0,15] --> [1, -1]
 	float dacOutput(u8 value, int channel) const; 
 public:
 	APU();
 
+	void div_apu_event();
 	void tick(u8 tcycles);
 	const StereoSample get_audio() const;
 	

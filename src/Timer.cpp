@@ -36,6 +36,7 @@ void Timer::set_system_counter(u16 value)
 	if (old_div_apu_bit and not new_div_apu_bit)
 	{
 		// DIV-APU event
+		apu->div_apu_event();
 	}
 }
 

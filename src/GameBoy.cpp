@@ -8,6 +8,7 @@ GameBoy::GameBoy() :
 {
 	cpu.connect_bus(&bus);
 	timer.connect_bus(&bus);
+	timer.connect_apu(&apu);
 	ppu.connect_bus(&bus);
 	joypad.connect_bus(&bus);
 }

@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include <array>
+#include "APU.h"
 
 constexpr std::array<int, 4> falling_edge_bit{ {9, 3, 5, 7} };
 
@@ -13,6 +14,7 @@ public:
 	Timer();
 
 	void connect_bus(Bus* b) { bus = b; }
+	void connect_apu(APU* a) { apu = a; }
 
 	u8 read(u16 addr);
 	void write(u16 addr, u8 data);
@@ -21,6 +23,7 @@ public:
 
 private:
 	Bus* bus;
+	APU* apu;
 
 	//u8 divider_reg;		// FF04 - DIV: Divider register
 	u8 tima;			// FF05 - TIMA: Timer counter

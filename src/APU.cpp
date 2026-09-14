@@ -40,7 +40,7 @@ void PulseChannel::write_control(u8 v)
 {
 	bool trigger = CHECK_BIT(v, 7);
 	length_enable = CHECK_BIT(v, 6);
-	period_value = period_value & 0xFF | v & 0x7;
+	period_value = period_value & 0xFF | (v & 0x7) << 8;
 
 	if (trigger)
 	{
@@ -48,6 +48,10 @@ void PulseChannel::write_control(u8 v)
 		*ch_on = true;
 
 		// If length timer expired it is reset.
+		if (current_length_timer++ >= 64)
+		{
+			current_length_timer = initial_length_timer;
+		}
 
 		// The period divider is set to the contents of NR13 and NR14.
 		period_div = period_value;
@@ -69,6 +73,48 @@ void PulseChannel::tick(u8 mcycles)
 		period_div -= (0x800 - period_value);
 		duty_pos = (duty_pos + 1) % 8;
 	}
+}
+
+void PulseChannel::tick_length_timer()
+{
+	if (current_length_timer++ >= 64)
+	{
+		*ch_on = false;
+	}
+}
+
+void PulseChannel::tick_sweep()
+{
+	if (sweep_pace > 0)
+	{
+		sweep_iterations++;
+		if (sweep_iterations >= sweep_pace)
+		{
+			sweep_iterations = 0;
+			int inc = period_value / (2 << individual_step);
+
+			period_value = (direction) ? period_value - inc : period_value + inc;
+
+		}
+	}
+
+	if (period_value > 0x7FF)
+	{
+		*ch_on = false;
+	}
+}
+
+void PulseChannel::tick_envelope()
+{
+	if (env_pace == 0) return;
+
+	envelope_iterations++;
+	if (envelope_iterations >= env_pace)
+	{
+		envelope_iterations = 0;
+		current_volume += env_dir * 2 - 1; // [0, 1] --> [-1, 1]
+	}
+
 }
 
 u8 PulseChannel::sample() const
@@ -95,6 +141,10 @@ void WaveChannel::write_control(u8 v)
 		*ch_on = true;
 
 		// If length timer expired it is reset.
+		if (current_length_timer++ >= 256)
+		{
+			current_length_timer = initial_length_timer;
+		}
 
 		// The period divider is set to the contents of NR33 and NR34.
 		period_div = period_value;
@@ -114,6 +164,14 @@ void WaveChannel::tick(u8 tcycles)
 	{
 		period_div -= (0x800 - period_value);
 		wave_pos = (wave_pos + 1) % 32;
+	}
+}
+
+void WaveChannel::tick_length_timer()
+{
+	if (current_length_timer++ >= 256)
+	{
+		*ch_on = false;
 	}
 }
 
@@ -149,6 +207,32 @@ APU::APU() :
 	ch2(&NR52.ch_on[1]),
 	ch3(&NR52.ch_on[2])
 {
+}
+
+void APU::div_apu_event()
+{
+	div_apu++;
+	
+	// Envelope sweep (volume)
+	if (div_apu % 8 == 0)
+	{
+		ch1.tick_envelope();
+		ch2.tick_envelope();
+	}
+
+	// Sound length
+	if (div_apu % 2 == 0)
+	{
+		ch1.tick_length_timer();
+		ch2.tick_length_timer();
+		ch3.tick_length_timer();
+	}
+
+	// CH1 freq sweep
+	if (div_apu % 4 == 0)
+	{
+		ch1.tick_sweep();
+	}
 }
 
 void APU::tick(u8 tcycles)
