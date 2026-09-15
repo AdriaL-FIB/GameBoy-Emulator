@@ -13,11 +13,15 @@ static SDL_Texture* texture = nullptr;
 #define AUDIO_FREQ 20000
 #define AUDIO_SAMPLES_BUFF_SIZE 512
 
+#define SPEED_UP 5
+
 GameBoy gb;
 
 Uint32 colors[]{ 0x00FFFFFF, 0x00888888, 0x00444444, 0x00000000 };
 
 static SDL_AudioStream* stream = nullptr;
+
+bool speedup = false;
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
@@ -81,7 +85,11 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
 	if (not gb.game_loaded()) return SDL_APP_CONTINUE;
 
-    budget += int(delta_time_ms / 1000.0f * gb.get_freq());
+	u32 freq = gb.get_freq();
+	if (speedup)
+		freq *= SPEED_UP;
+
+    budget += int(delta_time_ms / 1000.0f * freq);
 
 
 	StereoSample samples[AUDIO_SAMPLES_BUFF_SIZE];
@@ -92,9 +100,9 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 		int ticks = int(gb.tick());
 		budget -= ticks;
 		audio_acc += ticks * AUDIO_FREQ;
-		if (audio_acc >= gb.get_freq())
+		if (audio_acc >= freq)
 		{
-			audio_acc -= gb.get_freq();
+			audio_acc -= freq;
 			samples[k++] = gb.get_audio();
 
 			if (k >= AUDIO_SAMPLES_BUFF_SIZE)
@@ -178,6 +186,9 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 		case SDLK_DOWN:
 			gb.button_down(DPAD_DOWN);
 			break;
+		case SDLK_SPACE:
+			speedup = true;
+			break;
 		default:
 			break;
 		}
@@ -209,6 +220,9 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 			break;
 		case SDLK_DOWN:
 			gb.button_up(DPAD_DOWN);
+			break;
+		case SDLK_SPACE:
+			speedup = false;
 			break;
 		default:
 			break;
