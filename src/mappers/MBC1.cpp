@@ -2,10 +2,10 @@
 
 MBC1::MBC1(const std::vector<u8>& rom, std::vector<u8>& ram) : Mapper(rom, ram)
 {
-	num_rom_banks = rom.size() / (16 * 1024);
+	num_rom_banks = rom.size() / ROM_BANK_SIZE;
 	select_rom_bank_mask = num_rom_banks - 1;
 
-	num_ram_banks = ram.size() / (8 * 1024);
+	num_ram_banks = ram.size() / RAM_BANK_SIZE;
 
 	uses_ram_banks = num_rom_banks <= 32 and num_ram_banks > 1;
 	uses_secondary_reg = num_rom_banks > 32 or num_ram_banks > 1;

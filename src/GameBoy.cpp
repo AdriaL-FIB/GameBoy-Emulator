@@ -13,6 +13,11 @@ GameBoy::GameBoy() :
 	joypad.connect_bus(&bus);
 }
 
+GameBoy::~GameBoy()
+{
+	cartridge.save_ram();
+}
+
 bool GameBoy::load_rom(const std::string& path)
 {
 	cartridge_loaded = cartridge.load(path);

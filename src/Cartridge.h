@@ -16,18 +16,25 @@ private:
 	// ((address - external_ram_start_address) + (active_ram_bank * ram_bank_size)) % max_external_ram_size
 
 	u8 cartridge_type;
+	bool battery;
 	//u8 rom_size;
 	//u8 ram_size;
 
 	//int rom_size;
 
+	std::string filename;
+	std::string path_no_ext;
+
 private:
 	Mapper* create_mapper(u8 cartridge_type);
+    bool load_save(const std::string& path);
 
 public:
 	bool load(const std::string& path);
+	bool save_ram();
 
 	u8 read(u16 addr) const;
 	void write(u16 addr, u8 data);
+
 };
 

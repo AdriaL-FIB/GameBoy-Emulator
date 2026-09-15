@@ -31,6 +31,7 @@ private:
 
 public:
 	GameBoy();
+	~GameBoy();
 
 	bool load_rom(const std::string& path);
 	bool game_loaded() const { return cartridge_loaded; }
