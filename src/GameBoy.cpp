@@ -20,6 +20,9 @@ GameBoy::~GameBoy()
 
 bool GameBoy::load_rom(const std::string& path)
 {
+	if (cartridge_loaded)
+		cartridge.save_ram();
+
 	cartridge_loaded = cartridge.load(path);
 	if (cartridge_loaded)
 		reset();

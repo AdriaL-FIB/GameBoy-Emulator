@@ -29,6 +29,7 @@
     <ClInclude Include="src\Joypad.h" />
     <ClInclude Include="src\mappers\Mapper.h" />
     <ClInclude Include="src\mappers\MBC1.h" />
+    <ClInclude Include="src\mappers\MBC3.h" />
     <ClInclude Include="src\mappers\NoMBC.h" />
     <ClInclude Include="src\PPU.h" />
     <ClInclude Include="resource.h" />
@@ -45,6 +46,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\mappers\Mapper.cpp" />
     <ClCompile Include="src\mappers\MBC1.cpp" />
+    <ClCompile Include="src\mappers\MBC3.cpp" />
     <ClCompile Include="src\mappers\NoMBC.cpp" />
     <ClCompile Include="src\PPU.cpp" />
     <ClCompile Include="src\Timer.cpp" />

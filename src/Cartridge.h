@@ -27,6 +27,7 @@ private:
 
 private:
 	Mapper* create_mapper(u8 cartridge_type);
+	bool has_battery(u8 cartridge_type);
     bool load_save(const std::string& path);
 
 public:

@@ -6,6 +6,7 @@
 
 #include "NoMBC.h"
 #include "MBC1.h"
+#include "MBC3.h"
 
 Mapper* Cartridge::create_mapper(u8 cartridge_type)
 {
@@ -13,13 +14,40 @@ Mapper* Cartridge::create_mapper(u8 cartridge_type)
 	{
 	case 0x00:
 		return new NoMBC(rom, ram);
-	case 0x03:
-		battery = true;
 	case 0x01:
 	case 0x02:
+	case 0x03:
 		return new MBC1(rom, ram);
+	case 0x0F:
+	case 0x10:
+		return new MBC3(rom, ram, true);
+	case 0x11:
+	case 0x12:
+	case 0x13:
+		return new MBC3(rom, ram, false);
 	default:
 		return nullptr;
+	}
+}
+
+bool Cartridge::has_battery(u8 cartridge_type)
+{
+	switch (cartridge_type)
+	{
+	case 0x03:
+	case 0x06:
+	case 0x09:
+	case 0x0D:
+	case 0x0F:
+	case 0x10:
+	case 0x13:
+	case 0x1B:
+	case 0x1E:
+	case 0x22:
+	case 0xFF:
+		return true;
+	default:
+		return false;
 	}
 }
 
@@ -92,6 +120,8 @@ bool Cartridge::load(const std::string& path)
 		return false;
 	}
 
+	battery = has_battery(cartridge_type);
+
 	if (battery)
 	{
 		load_save(path_no_ext + ".sav");
@@ -111,7 +141,17 @@ bool Cartridge::load_save(const std::string& path)
 	size_t size = savefile.tellg();
 
 	savefile.seekg(0, std::ios::beg);
-	savefile.read(reinterpret_cast<char*>(ram.data()), size);
+	savefile.read(reinterpret_cast<char*>(ram.data()), ram.size());
+
+	size_t remaining = size - ram.size();
+	if (remaining > 0)
+	{
+		std::vector<u8> extra_data(remaining);
+		savefile.read(reinterpret_cast<char*>(extra_data.data()), remaining);
+
+		mapper->load_extra_save_bytes(extra_data);
+	}
+
 	savefile.close();
 
 	std::cout << "Battery loaded" << std::endl;
@@ -127,7 +167,11 @@ bool Cartridge::save_ram()
 	std::ofstream sf(path_no_ext + ".sav", std::ios::out | std::ios::trunc | std::ios::binary);
 	if (not sf.is_open()) return false;
 
-	sf.write(reinterpret_cast<const char*>(&ram), ram.size());
+	sf.write(reinterpret_cast<const char*>(ram.data()), ram.size());
+
+	std::vector<u8> extra_data = mapper->get_extra_save_bytes();
+	sf.write(reinterpret_cast<const char*>(extra_data.data()), extra_data.size());
+
 	sf.close();
 
 	return true;
