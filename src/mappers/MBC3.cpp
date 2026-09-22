@@ -18,6 +18,9 @@ void MBC3::update_rtc()
 	u32 elapsed_s = now - time_RTC_updated;
 	time_RTC_updated = now;
 
+	if (elapsed_s <= 0)
+		return;
+
 	if (CHECK_BIT(RTC_dh, 6))
 		return;
 
@@ -32,20 +35,19 @@ void MBC3::update_rtc()
 
 	u32 elapsed_d = (total_h / 24);
 
+	u32 day = RTC_dl | ((RTC_dh & 1) << 8);
+	u32 total_days = day + elapsed_d;
 
-	if (RTC_dl + elapsed_d >= 256)
+	if (total_days >= 512)
 	{
-		if (RTC_dh & 0x01)
-		{
-			BIT_SET(RTC_dh, 7, true);
-			BIT_SET(RTC_dh, 0, false);
-		}
-		else
-		{
-			BIT_SET(RTC_dh, 0, true);
-		}
+		BIT_SET(RTC_dh, 7, true);
 	}
-	RTC_dl += elapsed_d;
+
+	day = total_days % 512;
+
+	BIT_SET(RTC_dh, 0, CHECK_BIT(day, 8));
+
+	RTC_dl = day & 0xFF;
 }
 
 std::vector<u8> MBC3::get_extra_save_bytes()
@@ -146,16 +148,18 @@ void MBC3::write(u16 addr, u8 data)
 			return;
 		}
 
+		update_rtc();
+
 		switch (selected_ram_bank)
 		{
 		case 0x08:
-			RTC_s = data;
+			RTC_s = data & 0x3F;
 			break;
 		case 0x09:
-			RTC_m = data;
+			RTC_m = data & 0x3F;
 			break;
 		case 0x0A:
-			RTC_h = data;
+			RTC_h = data & 0x1F;
 			break;
 		case 0x0B:
 			RTC_dl = data;
