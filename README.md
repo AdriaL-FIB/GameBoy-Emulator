@@ -27,24 +27,21 @@ Controls:
 - `Backspace`: Select
 - Arrow keys: D-pad
 
-Currently supported cartridge types:
-- ROM only
-- MBC1
-
 ## Current features
 
-- Game Boy CPU instruction set.
-- Memory mapping through the system bus.
-- Interrupt handling.
-- Timer.
-- Joypad input.
-- Cartridges without a mapper and MBC1.
-- PPU rendering with background, window, sprites and OAM DMA.
+- Full Game Boy CPU instruction set, including interrupts.
+- System bus with memory mapping, timer and joypad input.
+- PPU with background, window, sprites and OAM DMA.
+- APU with the four sound channels.
+- Cartridge loading with battery-backed saves.
+- Cartridge mappers:
+  - ROM only
+  - MBC1
+  - MBC3
 
 ## Future work
 
-- Add support for more cartridge types, battery and timer.
-- Implement audio.
+- Add support for more cartridge types.
 - Implement the `STOP` instruction.
 - Extend the emulator to support Game Boy Color.
 
